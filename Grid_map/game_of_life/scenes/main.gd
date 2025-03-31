@@ -27,7 +27,7 @@ var max_noise: float = -INF
 # Thresholds based on the image
 var thresholds = [
 	0.0,    # Water
-	0.214,  # Sand
+	0.314,  # Sand
 	0.364,  # Grass
 	0.522,  # Mountain
 	0.602,  # Flower
@@ -60,35 +60,32 @@ func generate_world():
 	for x in range(width):
 		for y in range(height):
 			var index = x * height + y
-			var noise_val = noise_values[index]
+			var base_noise = noise_values[index]
+			var normalized_noise = (base_noise - min_noise) / (max_noise - min_noise)
 
-			# Normalize noise to range [0, 1]
-			var normalized_noise = (noise_val - min_noise) / (max_noise - min_noise)
+			# Sample "feature noise" using warped coords (no extra noise objects)
+			var mountain_chance = noise.get_noise_2d(x + 1000, y - 1000)
+			var flower_chance = noise.get_noise_2d(x - 2000, y + 1500)
+			var forest_chance = noise.get_noise_2d(x + 3000, y + 3000)
 
-			# Assign tile type
+			# Biome base
 			var tile_pos: Vector2i
 			if normalized_noise < thresholds[1]:
 				tile_pos = water
 			elif normalized_noise < thresholds[2]:
 				tile_pos = sand
-			elif normalized_noise < thresholds[3]:
-				var n = randi()%2 
-				if n == 0:
-					tile_pos = grass
-				elif n == 1:
-					tile_pos = mountain
-				else:
-					tile_pos = flower
-			elif normalized_noise < thresholds[4]:
-				tile_pos = mountain
-			elif normalized_noise < thresholds[5]:
-				tile_pos = flower
-			elif normalized_noise < thresholds[6]:
-				tile_pos = forest
 			else:
-				tile_pos = snow
+				tile_pos = grass
 
-			# Set tile in TileMap
+				if mountain_chance > 0.25:
+					tile_pos = mountain
+				elif flower_chance > 0.25:
+					tile_pos = flower
+				elif forest_chance > 0.2:
+					tile_pos = forest
+				elif normalized_noise > thresholds[6]:
+					tile_pos = snow
+
 			tile_map.set_cell(Vector2i(x, y), source_id, tile_pos)
 			
 
