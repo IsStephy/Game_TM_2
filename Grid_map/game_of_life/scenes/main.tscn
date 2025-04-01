@@ -1,11 +1,10 @@
-[gd_scene load_steps=16 format=3 uid="uid://4upwiylptlrp"]
+[gd_scene load_steps=15 format=3 uid="uid://4upwiylptlrp"]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_sg7kk"]
 [ext_resource type="PackedScene" uid="uid://cue0st352a3a7" path="res://scenes/tile_map_layer.tscn" id="1_xq4sr"]
+[ext_resource type="PackedScene" uid="uid://67xg1hhffisx" path="res://scenes/human_cell.tscn" id="2_n5c08"]
 [ext_resource type="Texture2D" uid="uid://dpghs5xi1nbib" path="res://assets/tile_map/merged_output.png" id="3_wfchj"]
 [ext_resource type="Script" path="res://scenes/character_body_2d.gd" id="4_jd7uj"]
-[ext_resource type="Texture2D" uid="uid://dhqo74cwn7pok" path="res://assets/sell/tilemap2.png" id="5_0o431"]
-[ext_resource type="Script" path="res://scenes/human_cell.gd" id="5_30nmj"]
 
 [sub_resource type="Gradient" id="Gradient_d8dha"]
 interpolation_mode = 1
@@ -13,7 +12,7 @@ offsets = PackedFloat32Array(0, 0.885305, 0.969534, 0.973118, 0.987455, 0.989247
 colors = PackedColorArray(0.220215, 0.460128, 0.942336, 1, 0.840204, 0.718368, 0.348086, 1, 3.44135e-06, 0.586019, 0.0941458, 1, 1, 1, 1, 1, 0.608332, 0.0687228, 0.201213, 1, 0.572988, 0.572988, 0.572988, 1, 9.14484e-07, 0.35522, 0.0404457, 1)
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_a0xpa"]
-frequency = 0.0113
+frequency = 0.0105
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_xut50"]
 resource_local_to_scene = true
@@ -29,7 +28,7 @@ offsets = PackedFloat32Array(0, 0.335125, 0.521505, 0.560932, 0.603896, 0.902597
 colors = PackedColorArray(0, 0.772549, 0, 1, 0, 0, 0, 1, 0.453255, 0.0890158, 0.205345, 1, 0.110438, 0.211781, 0.555075, 1, 0.252688, 0.252688, 0.252688, 1, 0.0157052, 0.295007, 0.274015, 1, 1, 1, 1, 1)
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_0gd87"]
-noise_type = 2
+noise_type = 3
 frequency = 0.0001
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_shg56"]
@@ -692,6 +691,9 @@ script = ExtResource("1_sg7kk")
 noise_height_text = SubResource("NoiseTexture2D_xut50")
 second_noise = SubResource("NoiseTexture2D_shg56")
 
+[node name="HumanCell" parent="." instance=ExtResource("2_n5c08")]
+position = Vector2(568, 320)
+
 [node name="TileMapLayer" parent="." instance=ExtResource("1_xq4sr")]
 tile_set = SubResource("TileSet_7hyx1")
 
@@ -706,11 +708,3 @@ shape = SubResource("RectangleShape2D_r14mx")
 [node name="Camera2D" type="Camera2D" parent="CharacterBody2D"]
 position = Vector2(592, 328)
 zoom = Vector2(0.5, 0.5)
-
-[node name="HumanCell" type="Node2D" parent="."]
-script = ExtResource("5_30nmj")
-
-[node name="Sprite" type="Sprite2D" parent="HumanCell"]
-texture = ExtResource("5_0o431")
-region_enabled = true
-region_rect = Rect2(0, 0, 9, 9)

@@ -2,8 +2,10 @@ extends CharacterBody2D
 
 @export var speed: float = 1500.0  # Adjust speed as needed
 @onready var camera = $Camera2D
-@onready var tile_map = $TileMap  # Ensure this matches your node name
 @export var zoom_speed: float = 0.04  # Adjust zoom speed as needed
+
+func _ready() -> void:
+	pass
 
 func _process(delta):
 	var direction = Vector2.ZERO
