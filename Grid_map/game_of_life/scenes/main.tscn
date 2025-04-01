@@ -1,9 +1,11 @@
-[gd_scene load_steps=14 format=3 uid="uid://4upwiylptlrp"]
+[gd_scene load_steps=16 format=3 uid="uid://4upwiylptlrp"]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_sg7kk"]
 [ext_resource type="PackedScene" uid="uid://cue0st352a3a7" path="res://scenes/tile_map_layer.tscn" id="1_xq4sr"]
 [ext_resource type="Texture2D" uid="uid://dpghs5xi1nbib" path="res://assets/tile_map/merged_output.png" id="3_wfchj"]
 [ext_resource type="Script" path="res://scenes/character_body_2d.gd" id="4_jd7uj"]
+[ext_resource type="Texture2D" uid="uid://dhqo74cwn7pok" path="res://assets/sell/tilemap2.png" id="5_0o431"]
+[ext_resource type="Script" path="res://scenes/human_cell.gd" id="5_30nmj"]
 
 [sub_resource type="Gradient" id="Gradient_d8dha"]
 interpolation_mode = 1
@@ -704,3 +706,11 @@ shape = SubResource("RectangleShape2D_r14mx")
 [node name="Camera2D" type="Camera2D" parent="CharacterBody2D"]
 position = Vector2(592, 328)
 zoom = Vector2(0.5, 0.5)
+
+[node name="HumanCell" type="Node2D" parent="."]
+script = ExtResource("5_30nmj")
+
+[node name="Sprite" type="Sprite2D" parent="HumanCell"]
+texture = ExtResource("5_0o431")
+region_enabled = true
+region_rect = Rect2(0, 0, 9, 9)

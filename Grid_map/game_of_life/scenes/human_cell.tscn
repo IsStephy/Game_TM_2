@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3 uid="uid://67xg1hhffisx"]
+
+[ext_resource type="Script" path="res://scenes/human_cell.gd" id="1_qme2j"]
+[ext_resource type="Texture2D" uid="uid://dhqo74cwn7pok" path="res://assets/sell/tilemap2.png" id="2_ubk54"]
+
+[node name="HumanCell" type="Node2D"]
+script = ExtResource("1_qme2j")
+
+[node name="Cell" type="Sprite2D" parent="."]
+texture = ExtResource("2_ubk54")
+region_enabled = true
+region_rect = Rect2(0, 0, 9, 9)
