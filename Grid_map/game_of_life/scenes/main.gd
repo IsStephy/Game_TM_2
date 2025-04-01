@@ -79,7 +79,7 @@ func generate_world():
 
 				if mountain_chance > 0.25:
 					tile_pos = mountain
-				elif flower_chance > 0.25:
+				elif flower_chance > 0.45:
 					tile_pos = flower
 				elif forest_chance > 0.2:
 					tile_pos = forest
