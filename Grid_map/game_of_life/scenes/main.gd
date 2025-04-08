@@ -26,6 +26,18 @@ var noise_values = []
 var min_noise: float = INF
 var max_noise: float = -INF
 
+var tile_weights = {}
+
+# Tile weights based on the tile type
+var tile_weights_map = {
+	"water": 3,
+	"sand": 1,
+	"grass": 1,
+	"forest": 2,
+	"mountain": 3,
+	"snow": 3,
+	"flower": 1
+}
 
 # Thresholds based on the image
 var thresholds = [
@@ -38,9 +50,12 @@ var thresholds = [
 	0.8   # Snow
 ]
 
-#Game of life variables
+# Game of life variables
 var cell_states = [] # for storing current states
 var next_states = [] # for storing next states
+
+# Label for displaying human cell details
+@onready var details_label = Label.new()
 
 func _ready():
 	if noise_height_text and noise_height_text.noise:
@@ -53,22 +68,41 @@ func _ready():
 		min_noise = noise_values.min()
 		max_noise = noise_values.max()
 		generate_world()
-		
 	else:
 		push_error("NoiseTexture2D is not set correctly!")
+
+	# Add the label for displaying details to the scene
+	add_child(details_label)
+	details_label.hide()  # Hide the label initially
+
 func merge_noises():
 	for x in range(width):
-		for y in range (height):
-			noise_values.append((noise.get_noise_2d(x,y) + noise_2.get_noise_2d(x,y))/2)
+		for y in range(height):
+			noise_values.append((noise.get_noise_2d(x, y) + noise_2.get_noise_2d(x, y)) / 2)
+
 # Step 1: Store all noise values and find min/max
 func _unhandled_input(event):
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var cell_coords = tile_map.local_to_map(get_local_mouse_position())
-		
-		# Check if the click is within the bounds of the grid
-		if cell_coords.x >= 0 and cell_coords.x < width and cell_coords.y >= 0 and cell_coords.y < height:
-			# Spawn the human cell at the clicked node
-			spawn_human_cell(cell_coords)
+	if event is InputEventMouseButton:
+		if event.pressed:
+			var cell_coords = tile_map.local_to_map(get_local_mouse_position())
+			
+			# Left-click: Spawn human cell
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				if cell_coords.x >= 0 and cell_coords.x < width and cell_coords.y >= 0 and cell_coords.y < height:
+					spawn_human_cell(cell_coords)
+			
+			# Right-click: Show human cell details
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				var clicked_cell = get_clicked_human_cell(cell_coords)
+				if clicked_cell:
+					display_human_cell_details(clicked_cell)
+
+# Function to get the clicked human cell based on its coordinates
+func get_clicked_human_cell(coords: Vector2i) -> Dictionary:
+	for human_cell in human_cells:
+		if human_cell["pos"] == coords:
+			return human_cell
+	return human_cells[0]
 
 # Function to spawn the human cell at the grid coordinates
 func spawn_human_cell(pos: Vector2i):
@@ -84,10 +118,19 @@ func spawn_human_cell(pos: Vector2i):
 	# Convert the grid coordinates to world position using map_to_local
 	sprite.position = tile_map.map_to_local(pos)
 	
-	# Add the sprite to the human cells list
-	human_cells.append({"sprite": sprite, "pos": pos})
+	# Initialize the human cell with stats
+	var human_cell = {
+		"sprite": sprite,
+		"pos": pos,
+		"food": 60,         # Starting food
+		"happiness": 60,    # Starting happiness
+		"stamina": 100      # Starting stamina
+	}
+	
+	# Add the human cell to the list
+	human_cells.append(human_cell)
 
-
+var weight = 0
 # Step 2: Generate world using actual min/max noise range
 func generate_world():
 	for x in range(width):
@@ -105,25 +148,32 @@ func generate_world():
 			var tile_pos: Vector2i
 			if normalized_noise < thresholds[1]:
 				tile_pos = water
+				weight = 2
 			elif normalized_noise < thresholds[2]:
 				tile_pos = sand
+				weight = 1
 			else:
 				tile_pos = grass
+				weight = 1
 
 				if mountain_chance > 0.25:
 					tile_pos = mountain
+					weight = 3
 				elif flower_chance > 0.45:
 					tile_pos = flower
+					weight = 1
 				elif forest_chance > 0.2:
 					tile_pos = forest
+					weight = 2
 				elif normalized_noise > thresholds[6]:
 					tile_pos = snow
+					weight = 3
 			count += 1
 			tile_map.set_cell(Vector2i(x, y), source_id, tile_pos)
 
 			# Add tile to the AStar2D graph
 			var node_id = x * height + y
-			astar.add_point(node_id, Vector2(x, y))
+			astar.add_point(node_id, Vector2(x, y), weight)
 
 			# Connect the tile to its six neighbors (hexagonal grid adjacency)
 			# Top-left, Top-right, Left, Right, Bottom-left, Bottom-right
@@ -154,7 +204,7 @@ func connect_hex_neighbors(x: int, y: int, node_id: int):
 		var neighbor_y = y + dir.y
 		
 		# Check if the neighbor is within bounds
-		if neighbor_x > 0 and neighbor_x < width and neighbor_y > 0 and neighbor_y < height:
+		if neighbor_x >= 0 and neighbor_x < width and neighbor_y >= 0 and neighbor_y < height:
 			# Calculate the neighbor's node ID
 			var neighbor_id = neighbor_x * height + neighbor_y
 			# Connect the current tile to the neighbor
@@ -166,35 +216,15 @@ func find_path(start: Vector2i, goal: Vector2i) -> Array:
 	var path = astar.get_point_path(start_id, goal_id)
 	return path
 	
-func step_game_of_life():
-	next_states.clear()
-	for x in range(width):
-		var row = []
-		for y in range(height):
-			var alive_neighbors = get_alive_neighbors(x, y)
-			var is_alive = cell_states[x * height + y]
-			var next_state = is_alive
-			if is_alive and (alive_neighbors < 2 or alive_neighbors > 3):
-				next_state = false
-			elif not is_alive and alive_neighbors == 3:
-				next_state = true
-			row.append(next_state)
-		next_states.append(row)
-		cell_states = next_states
-	update_cells()
-
-func get_alive_neighbors(x, y):
-	var directions = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, 1], [1, -1]]
-	var count = 0
-	for dir in directions:
-		var nx = x + dir[0]
-		var ny = y + dir[1]
-		if nx >= 0 and nx < width and ny >= 0 and ny < height:
-			if cell_states[nx * height + ny]:
-				count += 1
-	return count
-
-func update_cells():
-	for x in range(width):
-		for y in range(height):
-			human_cells[x][y].modulate = Color(0, 1, 0) if cell_states[x * height + y] else Color(1, 0, 0)
+# Function to display human cell details
+func display_human_cell_details(human_cell: Dictionary):
+	# Update the label with the human cell's details
+	details_label.text = "Food: %d\nHappiness: %d\nStamina: %d" % [
+		human_cell["food"], 
+		human_cell["happiness"], 
+		human_cell["stamina"]
+	]
+	
+	# Position the label near the human cell sprite
+	details_label.position = human_cell["sprite"].position + Vector2(0, -50)
+	details_label.show()  # Show the label with the details
