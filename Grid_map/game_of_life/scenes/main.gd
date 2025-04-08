@@ -2,12 +2,13 @@ extends Node2D
 
 @export var noise_height_text: NoiseTexture2D
 @export var second_noise: NoiseTexture2D
+
 var noise: FastNoiseLite
 var noise_2: FastNoiseLite
-var width: int = 500
-var height: int = 500
+var width: int = 200
+var height: int = 200
 @onready var tile_map = $TileMapLayer
-
+@onready var astar = AStar2D.new()
 @onready var human_cells = []
 
 # TileSet atlas coordinates
@@ -19,7 +20,7 @@ var mountain = Vector2i(17, 4)
 var flower = Vector2i(19, 33)
 var snow = Vector2i(2, 29)
 var forest = Vector2i(11, 14)
-
+var count = 0
 # Noise data storage
 var noise_values = []
 var min_noise: float = INF
@@ -60,6 +61,32 @@ func merge_noises():
 		for y in range (height):
 			noise_values.append((noise.get_noise_2d(x,y) + noise_2.get_noise_2d(x,y))/2)
 # Step 1: Store all noise values and find min/max
+func _unhandled_input(event):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var cell_coords = tile_map.local_to_map(get_local_mouse_position())
+		
+		# Check if the click is within the bounds of the grid
+		if cell_coords.x >= 0 and cell_coords.x < width and cell_coords.y >= 0 and cell_coords.y < height:
+			# Spawn the human cell at the clicked node
+			spawn_human_cell(cell_coords)
+
+# Function to spawn the human cell at the grid coordinates
+func spawn_human_cell(pos: Vector2i):
+	# Create a new sprite for the human cell
+	var sprite = Sprite2D.new()
+	sprite.texture = preload("res://assets/character/default.png")  # Replace with the actual path to your texture
+	add_child(sprite)
+	
+	# Scale the sprite to make it 2 times bigger (32x32)
+	sprite.scale = Vector2(2, 2)
+
+	# Position the sprite at the correct location based on the tile coordinates
+	# Convert the grid coordinates to world position using map_to_local
+	sprite.position = tile_map.map_to_local(pos)
+	
+	# Add the sprite to the human cells list
+	human_cells.append({"sprite": sprite, "pos": pos})
+
 
 # Step 2: Generate world using actual min/max noise range
 func generate_world():
@@ -91,15 +118,53 @@ func generate_world():
 					tile_pos = forest
 				elif normalized_noise > thresholds[6]:
 					tile_pos = snow
-
+			count += 1
 			tile_map.set_cell(Vector2i(x, y), source_id, tile_pos)
-			
 
+			# Add tile to the AStar2D graph
+			var node_id = x * height + y
+			astar.add_point(node_id, Vector2(x, y))
+
+			# Connect the tile to its six neighbors (hexagonal grid adjacency)
+			# Top-left, Top-right, Left, Right, Bottom-left, Bottom-right
+	for x in range(width):
+		for y in range(height):
+			var node_id = x * height + y
+			connect_hex_neighbors(x, y, node_id)
+
+	print(count)
 	# Force the tilemap to refresh
 	tile_map.visible = true
 	tile_map.modulate = Color(1, 1, 1, 1)  # Ensure visibility
 
-	# Move camera to center of map
+func connect_hex_neighbors(x: int, y: int, node_id: int):
+	# Directions for hexagonal adjacency (6 neighbors)
+	var directions = [
+		Vector2(-1, 0),  # Left
+		Vector2(1, 0),   # Right
+		Vector2(0, -1),  # Top-left
+		Vector2(0, 1),   # Bottom-right
+		Vector2(-1, 1),  # Bottom-left
+		Vector2(1, -1)   # Top-right
+	]
+	
+	# For each direction, check if the neighbor exists and connect
+	for dir in directions:
+		var neighbor_x = x + dir.x
+		var neighbor_y = y + dir.y
+		
+		# Check if the neighbor is within bounds
+		if neighbor_x > 0 and neighbor_x < width and neighbor_y > 0 and neighbor_y < height:
+			# Calculate the neighbor's node ID
+			var neighbor_id = neighbor_x * height + neighbor_y
+			# Connect the current tile to the neighbor
+			astar.connect_points(node_id, neighbor_id, true)
+
+func find_path(start: Vector2i, goal: Vector2i) -> Array:
+	var start_id = start.x * height + start.y
+	var goal_id = goal.x * height + goal.y
+	var path = astar.get_point_path(start_id, goal_id)
+	return path
 	
 func step_game_of_life():
 	next_states.clear()

@@ -1,7 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://67xg1hhffisx"]
+[gd_scene load_steps=3 format=3 uid="uid://4o1cyogx4w24"]
 
 [ext_resource type="Script" path="res://scenes/human_cell.gd" id="1_qme2j"]
-[ext_resource type="Texture2D" uid="uid://cy4eqdyg342dn" path="res://assets/sell/tilemap2.png" id="2_ubk54"]
+[ext_resource type="Texture2D" uid="uid://dlep1qnmnsjcf" path="res://assets/character/default.png" id="2_lm33g"]
 
 [node name="HumanCell" type="Node2D"]
 script = ExtResource("1_qme2j")
@@ -9,6 +9,8 @@ script = ExtResource("1_qme2j")
 [node name="Cell" type="Sprite2D" parent="."]
 show_behind_parent = true
 top_level = true
-texture = ExtResource("2_ubk54")
+position = Vector2(16, 16)
+scale = Vector2(2, 2)
+texture = ExtResource("2_lm33g")
 region_enabled = true
-region_rect = Rect2(0, 0, 32, 32)
+region_rect = Rect2(0, 0, 16, 16)
