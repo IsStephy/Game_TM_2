@@ -51,7 +51,8 @@ func initialize(map, astar_ref, weights, paused):
 	tile_map = map
 	astar = astar_ref
 	weight_map = weights
-	is_paused = paused  # Set paused flag from main.gd
+	is_paused = paused
+	print(is_paused)  # Set paused flag from main.gd
 	initialized = true
 	print("✅ Human initialized!")
 
@@ -61,6 +62,7 @@ func initialize(map, astar_ref, weights, paused):
 		sprite.position = Vector2.ZERO  # Reset position to (0, 0) relative to the HumanCell node
 
 func _process(_delta):
+	print(is_paused)
 	# Skip everything if the game is paused
 	if is_paused:
 		return
@@ -72,6 +74,10 @@ func _process(_delta):
 		decide_action()
 
 func decide_action():
+	# Skip action logic if paused
+	if is_paused:
+		return
+
 	# Adjusting stats
 	age += 1
 	hunger -= 1  # Decreases hunger over time
@@ -127,6 +133,12 @@ func move_to(target: Vector2i):
 
 
 func _move_along_path():
+	# Ensure movement stops if the game is paused
+	if is_paused:
+		is_moving = false
+		return
+	
+	# If no movement is left to perform, end it
 	if move_index >= path.size():
 		is_moving = false  # End movement when path is exhausted
 		return
@@ -150,6 +162,8 @@ func _move_along_path():
 	$Cell.global_position = global_position  # Correct sprite's global position
 	move_index += 1
 
-	# Call again after some delay
-	await get_tree().create_timer(GENERATION_TIME).timeout
-	_move_along_path()  # Recursively move along the path
+	# Call the next step of movement after delay (if not paused)
+	if is_paused == false:
+		print(is_paused)
+		await get_tree().create_timer(GENERATION_TIME).timeout
+		_move_along_path()  # Proceed with the next path step
