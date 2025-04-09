@@ -9,6 +9,7 @@ script = ExtResource("1_qme2j")
 [node name="Cell" type="Sprite2D" parent="."]
 show_behind_parent = true
 top_level = true
+z_index = 1
 position = Vector2(16, 16)
 scale = Vector2(2, 2)
 texture = ExtResource("2_lm33g")

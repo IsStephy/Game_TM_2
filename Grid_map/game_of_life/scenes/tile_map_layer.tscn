@@ -1,4 +1,6 @@
-[gd_scene load_steps=2 format=3 uid="uid://cue0st352a3a7"]
+[gd_scene load_steps=3 format=3 uid="uid://cue0st352a3a7"]
+
+[ext_resource type="Script" path="res://scenes/tile_map_layer.gd" id="1_7n805"]
 
 [sub_resource type="TileSet" id="TileSet_kf5f4"]
 resource_local_to_scene = true
@@ -9,3 +11,4 @@ uv_clipping = true
 
 [node name="TileMapLayer" type="TileMapLayer"]
 tile_set = SubResource("TileSet_kf5f4")
+script = ExtResource("1_7n805")
