@@ -35,7 +35,7 @@ var tile_weights_map = {
 	"grass": 1,
 	"forest": 2,
 	"mountain": 3,
-	"snow": 3,
+	"snow": 3.5,
 	"flower": 1.5
 }
 
@@ -112,9 +112,17 @@ func spawn_human(pos: Vector2i):
 	print("✅ Spawned human at tile:", pos, " | World pos:", world_pos)
 
 func show_human_stats(human):
+<<<<<<< HEAD
 	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)
 	details_label.position = get_local_mouse_position() + Vector2(10, 10)
 	details_label.show()
+=======
+	# Update the label text with human stats using string interpolation
+	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)+"\n Wood amount: "+str(human.wood_amount)
+	details_label.position = get_local_mouse_position() + Vector2(10, 10)  # Position the label near the mouse click
+	details_label.show()  # Make the label visible
+
+>>>>>>> 94ee3db7d1711d289b90c72359dc0dc0f5ec9962
 
 func generate_world():
 	for x in range(width):
@@ -139,6 +147,7 @@ func generate_world():
 				tile_type = "grass"
 				weight = tile_weights_map[tile_type]
 				if mountain_chance > 0.25:
+<<<<<<< HEAD
 					tile_type = "mountain"
 					weight = tile_weights_map[tile_type]
 				elif flower_chance > 0.65:
@@ -150,6 +159,19 @@ func generate_world():
 				elif normalized_noise > thresholds[6]:
 					tile_type = "snow"
 					weight = tile_weights_map[tile_type]
+=======
+					tile_pos = mountain
+					weight = 2
+				elif flower_chance > 0.45:
+					tile_pos = flower
+					weight = 1.5
+				elif forest_chance > 0.2:
+					tile_pos = forest
+					weight = 3
+				elif normalized_noise > thresholds[6]:
+					tile_pos = snow
+					weight = 3.5
+>>>>>>> 94ee3db7d1711d289b90c72359dc0dc0f5ec9962
 
 			var pos = Vector2i(x, y)
 			weight_map[pos] = weight
