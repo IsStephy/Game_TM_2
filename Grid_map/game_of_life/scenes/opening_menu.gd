@@ -4,6 +4,7 @@ extends Control
 @onready var quit_button: Button = $VBoxContainer/quit
 @onready var credits_button: Button = $VBoxContainer/credits
 @onready var tilemap_layer = $TileMapLayer
+@onready var camera = $Camera2D
 
 var highlighted_tiles = []  # Track previously highlighted cells
 const HIGHLIGHT_RADIUS = 3  # The radius of tiles to highlight
@@ -11,7 +12,31 @@ const HIGHLIGHT_RADIUS = 3  # The radius of tiles to highlight
 # Modulate color for highlighting
 const HIGHLIGHT_COLOR = Color(1, 1, 0, 0.5)  # Yellow highlight with transparency
 
+func resize_tilemap_to_fit_screen():
+	var screen_size = get_viewport_rect().size
+	var map_rect = tilemap_layer.get_used_rect()
+	var cell_size = Vector2(tilemap_layer.tile_set.tile_size)
+	var map_pixel_size = Vector2(map_rect.size) * cell_size * 1.5  # scaled map size
+
+	if map_pixel_size.x == 0 or map_pixel_size.y == 0:
+		return
+
+	var scale_x = screen_size.x / map_pixel_size.x
+	var scale_y = screen_size.y / map_pixel_size.y
+	var uniform_scale = min(scale_x, scale_y) * 2.21  # keep the 1.5x base scale
+
+	tilemap_layer.scale = Vector2(uniform_scale, uniform_scale)
+
+	# Position at top-left corner
+	tilemap_layer.position = Vector2(0, 0)
+
+
+
+
+	
 func _ready() -> void:
+	resize_tilemap_to_fit_screen()
+	get_viewport().connect("size_changed", Callable(self, "resize_tilemap_to_fit_screen"))
 	start_button.pressed.connect(_on_start_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	credits_button.pressed.connect(_on_credits_pressed)
