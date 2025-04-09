@@ -9,7 +9,7 @@ var width: int = 200
 var height: int = 200
 @onready var tile_map = $TileMapLayer
 @onready var astar = AStar2D.new()
-var humans = []
+var humans = []  # Keep track of humans
 
 var source_id = 0  
 var water = Vector2i(5, 24)
@@ -26,13 +26,13 @@ var max_noise: float = -INF
 var weight_map = {}
 
 var tile_weights_map = {
-	"water": 3,
-	"sand": 1,
+	"water": 2.5,
+	"sand": 2.5,
 	"grass": 1,
 	"forest": 2,
 	"mountain": 3,
 	"snow": 3,
-	"flower": 1
+	"flower": 1.5
 }
 
 var thresholds = [
@@ -56,7 +56,7 @@ func _ready():
 		push_error("NoiseTexture2D is not set correctly!")
 
 	add_child(details_label)
-	details_label.hide()
+	details_label.hide()  # Hide the label initially
 
 func merge_noises():
 	for x in range(width):
@@ -65,22 +65,28 @@ func merge_noises():
 
 func _unhandled_input(event):
 	if event is InputEventMouseButton and event.pressed:
+		var mouse_pos = get_local_mouse_position()
+		var cell_coords = tile_map.local_to_map(mouse_pos)
+		
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			var mouse_pos = get_local_mouse_position()
-			var cell_coords = tile_map.local_to_map(mouse_pos)
 			print("Clicked at tile:", cell_coords)
 			spawn_human(cell_coords)
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			print("Right-clicked at tile:", cell_coords)
+			# Check if any human is in the clicked position
+			for human in humans:
+				if human.global_position == tile_map.map_to_local(cell_coords):  # Match position
+					show_human_stats(human)
+					return
+			details_label.hide()  # Hide the label if no human is found
 
-
-var is_paused = false  # Flag to track pause state
+var is_paused = true  # Flag to track pause state
 
 func _input(event):
 	if event is InputEventKey:
 		if event.pressed and event.keycode == KEY_SPACE:
 			is_paused = !is_paused  # Toggle pause state
-			print("Game is ","paused" if is_paused else "runing")
-
-
+			print("Game is ","paused" if is_paused else "running")
 
 func _process(delta):
 	if is_paused:
@@ -88,9 +94,8 @@ func _process(delta):
 
 	# All your normal processing here...
 	for human_cell in humans:
-		if not human_cell["is_moving"] and human_cell["stamina"] > 0:
+		if not human_cell["is_moving"] :
 			human_cell.decide_action()
-
 
 var used_tiles = {}
 
@@ -108,6 +113,13 @@ func spawn_human(pos: Vector2i):
 	print("✅ Spawned human at tile:", pos, " | World pos:", world_pos)
 	humans.append(human)
 
+# Function to display human stats on the label
+# Function to display human stats on the label
+func show_human_stats(human):
+	# Update the label text with human stats using string interpolation
+	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)
+	details_label.position = get_local_mouse_position() + Vector2(10, 10)  # Position the label near the mouse click
+	details_label.show()  # Make the label visible
 
 
 func generate_world():
@@ -125,10 +137,10 @@ func generate_world():
 
 			if normalized_noise < thresholds[1]:
 				tile_pos = water
-				weight = 3
+				weight = 2.5
 			elif normalized_noise < thresholds[2]:
 				tile_pos = sand
-				weight = 1
+				weight = 2.5
 			else:
 				tile_pos = grass
 				weight = 1
@@ -137,7 +149,7 @@ func generate_world():
 					weight = 3
 				elif flower_chance > 0.45:
 					tile_pos = flower
-					weight = 1
+					weight = 1.5
 				elif forest_chance > 0.2:
 					tile_pos = forest
 					weight = 2
@@ -157,13 +169,25 @@ func generate_world():
 			connect_hex_neighbors(x, y, node_id)
 
 func connect_hex_neighbors(x: int, y: int, node_id: int):
-	var directions = [
-		Vector2(-1, 0), Vector2(-2, 0), Vector2(-1, 1),
-		Vector2(1, 1), Vector2(0, 2), Vector2(1, 0)
+	var directions_1 = [
+		Vector2(-1, 0), Vector2(0 , -1), Vector2(1, 0),
+		Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1)
 	]
-	for dir in directions:
-		var nx = x + dir.x
-		var ny = y + dir.y
-		if nx >= 0 and nx < width and ny >= 0 and ny < height:
-			var neighbor_id = nx * height + ny
-			astar.connect_points(node_id, neighbor_id, true)
+	var directions_2 = [
+		Vector2(-1, -1), Vector2(0 , -1), Vector2(1, -1),
+		Vector2(-1, 0), Vector2(0, 1), Vector2(0, 1)
+	]
+	if x % 2 == 1: 
+		for dir in directions_1:
+			var nx = x + dir.x
+			var ny = y + dir.y
+			if nx >= 0 and nx < width and ny >= 0 and ny < height:
+				var neighbor_id = nx * height + ny
+				astar.connect_points(node_id, neighbor_id, true)
+	else:
+		for dir in directions_2:
+			var nx = x + dir.x
+			var ny = y + dir.y
+			if nx >= 0 and nx < width and ny >= 0 and ny < height:
+				var neighbor_id = nx * height + ny
+				astar.connect_points(node_id, neighbor_id, true)
