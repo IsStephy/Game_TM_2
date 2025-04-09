@@ -11,7 +11,6 @@ var height: int = 200
 @onready var astar = AStar2D.new()
 @onready var human_cells = []
 
-# TileSet atlas coordinates
 var source_id = 0  
 var water = Vector2i(5, 24)
 var sand = Vector2i(0, 0)
@@ -20,15 +19,13 @@ var mountain = Vector2i(17, 4)
 var flower = Vector2i(19, 33)
 var snow = Vector2i(2, 29)
 var forest = Vector2i(11, 14)
+
 var count = 0
-# Noise data storage
 var noise_values = []
 var min_noise: float = INF
 var max_noise: float = -INF
-
 var tile_weights = {}
 
-# Tile weights based on the tile type
 var tile_weights_map = {
 	"water": 3,
 	"sand": 1,
@@ -39,23 +36,28 @@ var tile_weights_map = {
 	"flower": 1
 }
 
-# Thresholds based on the image
 var thresholds = [
-	0.0,    # Water
-	0.314,  # Sand
-	0.364,  # Grass
-	0.522,  # Mountain
-	0.602,  # Flower
-	0.647,  # Forest
-	0.8   # Snow
+	0.0,
+	0.314,
+	0.364,
+	0.522,
+	0.602,
+	0.647,
+	0.8
 ]
 
-# Game of life variables
-var cell_states = [] # for storing current states
-var next_states = [] # for storing next states
+var cell_states = []
+var next_states = []
 
-# Label for displaying human cell details
 @onready var details_label = Label.new()
+
+var weight = 0
+var weight_map = {}
+
+# Movement control
+var is_moving = false
+var current_path = []
+var move_index = 0
 
 func _ready():
 	if noise_height_text and noise_height_text.noise:
@@ -71,80 +73,60 @@ func _ready():
 	else:
 		push_error("NoiseTexture2D is not set correctly!")
 
-	# Add the label for displaying details to the scene
 	add_child(details_label)
-	details_label.hide()  # Hide the label initially
+	details_label.hide()
 
 func merge_noises():
 	for x in range(width):
 		for y in range(height):
 			noise_values.append((noise.get_noise_2d(x, y) + noise_2.get_noise_2d(x, y)) / 2)
 
-# Step 1: Store all noise values and find min/max
 func _unhandled_input(event):
-	if event is InputEventMouseButton:
-		if event.pressed:
-			var cell_coords = tile_map.local_to_map(get_local_mouse_position())
-			
-			# Left-click: Spawn human cell
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				if cell_coords.x >= 0 and cell_coords.x < width and cell_coords.y >= 0 and cell_coords.y < height:
-					spawn_human_cell(cell_coords)
-			
-			# Right-click: Show human cell details
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				var clicked_cell = get_clicked_human_cell(cell_coords)
-				if clicked_cell:
-					display_human_cell_details(clicked_cell)
+	if event is InputEventMouseButton and event.pressed:
+		var cell_coords = tile_map.local_to_map(get_local_mouse_position())
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if cell_coords.x >= 0 and cell_coords.x < width and cell_coords.y >= 0 and cell_coords.y < height:
+				spawn_human_cell(cell_coords)
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			var clicked_cell = get_clicked_human_cell(cell_coords)
+			if clicked_cell:
+				display_human_cell_details(clicked_cell)
 
-# Function to get the clicked human cell based on its coordinates
 func get_clicked_human_cell(coords: Vector2i) -> Dictionary:
 	for human_cell in human_cells:
-		if human_cell["pos"] == coords:
+		if Vector2i(human_cell["pos"]) == coords:
 			return human_cell
 	return human_cells[0]
 
-# Function to spawn the human cell at the grid coordinates
 func spawn_human_cell(pos: Vector2i):
-	# Create a new sprite for the human cell
 	var sprite = Sprite2D.new()
-	sprite.texture = preload("res://assets/character/default.png")  # Replace with the actual path to your texture
+	sprite.texture = preload("res://assets/character/default.png")
 	add_child(sprite)
-	
-	# Scale the sprite to make it 2 times bigger (32x32)
 	sprite.scale = Vector2(2, 2)
-
-	# Position the sprite at the correct location based on the tile coordinates
-	# Convert the grid coordinates to world position using map_to_local
 	sprite.position = tile_map.map_to_local(pos)
-	
-	# Initialize the human cell with stats
+
 	var human_cell = {
 		"sprite": sprite,
 		"pos": pos,
-		"food": 60,         # Starting food
-		"happiness": 60,    # Starting happiness
-		"stamina": 100      # Starting stamina
+		"food": 60,
+		"happiness": 60,
+		"stamina": 100,
+		"is_moving": false,
+		"path": [],
+		"move_index": 0
 	}
-	
-	# Add the human cell to the list
 	human_cells.append(human_cell)
 
-var weight = 0
-# Step 2: Generate world using actual min/max noise range
 func generate_world():
 	for x in range(width):
 		for y in range(height):
 			var index = x * height + y
 			var base_noise = noise_values[index]
 			var normalized_noise = (base_noise - min_noise) / (max_noise - min_noise)
-
-			# Sample "feature noise" using warped coords (no extra noise objects)
 			var mountain_chance = noise.get_noise_2d(x + 1000, y - 1000)
 			var flower_chance = noise.get_noise_2d(x - 2000, y + 1500)
 			var forest_chance = noise.get_noise_2d(x + 3000, y + 3000)
 
-			# Biome base
 			var tile_pos: Vector2i
 			if normalized_noise < thresholds[1]:
 				tile_pos = water
@@ -155,7 +137,6 @@ func generate_world():
 			else:
 				tile_pos = grass
 				weight = 1
-
 				if mountain_chance > 0.25:
 					tile_pos = mountain
 					weight = 3
@@ -168,63 +149,79 @@ func generate_world():
 				elif normalized_noise > thresholds[6]:
 					tile_pos = snow
 					weight = 3
-			count += 1
-			tile_map.set_cell(Vector2i(x, y), source_id, tile_pos)
 
-			# Add tile to the AStar2D graph
+			weight_map[Vector2i(x, y)] = weight
+			tile_map.set_cell(Vector2i(x, y), source_id, tile_pos)
 			var node_id = x * height + y
 			astar.add_point(node_id, Vector2(x, y), weight)
 
-			# Connect the tile to its six neighbors (hexagonal grid adjacency)
-			# Top-left, Top-right, Left, Right, Bottom-left, Bottom-right
 	for x in range(width):
 		for y in range(height):
 			var node_id = x * height + y
 			connect_hex_neighbors(x, y, node_id)
 
-	print(count)
-	# Force the tilemap to refresh
-	tile_map.visible = true
-	tile_map.modulate = Color(1, 1, 1, 1)  # Ensure visibility
-
 func connect_hex_neighbors(x: int, y: int, node_id: int):
-	# Directions for hexagonal adjacency (6 neighbors)
 	var directions = [
-		Vector2(-1, 0),  # Left
-		Vector2(1, 0),   # Right
-		Vector2(0, -1),  # Top-left
-		Vector2(0, 1),   # Bottom-right
-		Vector2(-1, 1),  # Bottom-left
-		Vector2(1, -1)   # Top-right
+		Vector2(-1, 0),
+		Vector2(-2, 0),
+		Vector2(-1, 1),
+		Vector2(1, 1),
+		Vector2(0, 2),
+		Vector2(1, 0)
 	]
-	
-	# For each direction, check if the neighbor exists and connect
 	for dir in directions:
 		var neighbor_x = x + dir.x
 		var neighbor_y = y + dir.y
-		
-		# Check if the neighbor is within bounds
 		if neighbor_x >= 0 and neighbor_x < width and neighbor_y >= 0 and neighbor_y < height:
-			# Calculate the neighbor's node ID
 			var neighbor_id = neighbor_x * height + neighbor_y
-			# Connect the current tile to the neighbor
 			astar.connect_points(node_id, neighbor_id, true)
 
 func find_path(start: Vector2i, goal: Vector2i) -> Array:
 	var start_id = start.x * height + start.y
 	var goal_id = goal.x * height + goal.y
-	var path = astar.get_point_path(start_id, goal_id)
-	return path
-	
-# Function to display human cell details
+	return astar.get_point_path(start_id, goal_id)
+
 func display_human_cell_details(human_cell: Dictionary):
-	# Update the label with the human cell's details
 	details_label.text = "Food: %d\nHappiness: %d\nStamina: %d" % [
 		human_cell["food"], 
 		human_cell["happiness"], 
 		human_cell["stamina"]
 	]
-	
-	# Position the label near the human cell sprite
 	details_label.position = human_cell["sprite"].position + Vector2(0, -50)
-	details_label.show()  # Show the label with the details
+	details_label.show()
+
+func _process(_delta):
+	for human_cell in human_cells:
+		if not human_cell["is_moving"] and human_cell["stamina"] > 0:
+			var start_pos = human_cell["pos"]
+			var goal_pos = Vector2i(10, 10)  # You can change this goal dynamically
+			var path = find_path(start_pos, goal_pos)
+			if path.size() > 0:
+				human_cell["path"] = path
+				human_cell["move_index"] = 0
+				human_cell["is_moving"] = true
+				move_along_path(human_cell)
+
+func move_along_path(cell: Dictionary) -> void:
+	var index = cell["move_index"]
+	var path = cell["path"]
+
+	if index >= path.size():
+		cell["is_moving"] = false
+		return
+
+	var next_position = Vector2i(path[index])
+	var current_tile_weight = weight_map.get(next_position, 1)
+	cell["stamina"] -= current_tile_weight
+
+	if cell["stamina"] <= 0:
+		print("A human ran out of stamina!")
+		cell["is_moving"] = false
+		return
+
+	cell["pos"] = next_position
+	cell["sprite"].position = tile_map.map_to_local(next_position)
+	cell["move_index"] += 1
+
+	await get_tree().create_timer(1.0).timeout
+	move_along_path(cell)
