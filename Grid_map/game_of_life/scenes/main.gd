@@ -31,7 +31,7 @@ var tile_weights_map = {
 	"grass": 1,
 	"forest": 2,
 	"mountain": 3,
-	"snow": 3,
+	"snow": 3.5,
 	"flower": 1.5
 }
 
@@ -117,7 +117,7 @@ func spawn_human(pos: Vector2i):
 # Function to display human stats on the label
 func show_human_stats(human):
 	# Update the label text with human stats using string interpolation
-	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)
+	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)+"\n Wood amount: "+str(human.wood_amount)
 	details_label.position = get_local_mouse_position() + Vector2(10, 10)  # Position the label near the mouse click
 	details_label.show()  # Make the label visible
 
@@ -146,16 +146,16 @@ func generate_world():
 				weight = 1
 				if mountain_chance > 0.25:
 					tile_pos = mountain
-					weight = 3
+					weight = 2
 				elif flower_chance > 0.45:
 					tile_pos = flower
 					weight = 1.5
 				elif forest_chance > 0.2:
 					tile_pos = forest
-					weight = 2
+					weight = 3
 				elif normalized_noise > thresholds[6]:
 					tile_pos = snow
-					weight = 3
+					weight = 3.5
 
 			var tile = Vector2i(x, y)
 			weight_map[tile] = weight

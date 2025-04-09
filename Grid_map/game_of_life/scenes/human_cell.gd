@@ -8,6 +8,7 @@ var hunger: int = 100  # Hunger stat
 var age: int = 0
 var max_age: int = 400
 var wood_amount: int = 0
+var house_count: int = 0  # Track number of houses built
 
 # ✅ Memory
 var memory = {
@@ -77,7 +78,7 @@ func _process(_delta):
 func decide_action():
 	# Adjusting stats
 	age += 1
-	hunger -= 5  # Decreases hunger over time
+	hunger -= 3  # Decreases hunger over time
 	stamina -= 1  # Decreases stamina over time
 	happiness -= 2
 
@@ -99,6 +100,11 @@ func decide_action():
 		if forest_pos:
 			move_to(forest_pos)  # Move to the forest to gather wood
 			return
+
+	# If the character has 20 wood, attempt to construct a house
+	if wood_amount >= 20 and house_count < 1:
+		build_house()
+		return
 
 	# If no food, happiness, or wood found, wander randomly (as a fallback behavior)
 	var current_pos = tile_map.local_to_map(global_position)
@@ -127,6 +133,50 @@ func gather_wood():
 	if wood_amount < 30:  # Check if the human can still gather wood (max 30)
 		wood_amount = min(wood_amount + 3, 30)  # Increase wood by 3 per generation, max 30
 		print("Gathered wood. Current wood amount: ", wood_amount)
+
+# Preload the house texture
+var house_texture = preload("res://assets/buildings/house.png")
+
+# Function to build a house if the human has enough wood
+func build_house():
+	if house_count < 1:  # Ensure only one house is built
+		var random_pos = get_random_position_for_house()
+		print("Building house at position: ", random_pos)
+		house_count += 1
+		wood_amount -= 20  # Deduct 20 wood for building the house
+		
+		# Create a sprite node for the house
+		var house_sprite = Sprite2D.new()
+		house_sprite.texture = house_texture  # Set the house texture to the sprite
+		
+		# Set the house sprite position to the corresponding tile position
+		house_sprite.position = tile_map.map_to_local(random_pos)  # Convert the map position to local position
+		
+		# Add the sprite to the scene (parent node)
+		get_parent().add_child(house_sprite)
+		
+		print("House built! Total houses constructed: ", house_count)
+
+
+
+# Get a random position within the map for constructing a house
+# Get a random position within a 10-tile radius where the weight is 1 (e.g., grass area)
+func get_random_position_for_house() -> Vector2i:
+	var current_cell = tile_map.local_to_map(global_position)
+	var valid_positions = []
+	# Search within a radius of 10 tiles
+	for x_offset in range(-10, 11):
+		for y_offset in range(-10, 11):
+			var check_pos = current_cell + Vector2i(x_offset, y_offset)
+			# Ensure the position exists and has a weight of 1 (suitable for building a house)
+			if weight_map.has(check_pos) and weight_map[check_pos] == 1:
+				valid_positions.append(check_pos)
+
+	# If valid positions are found, return a random one; otherwise, return current position
+	if valid_positions.size() > 0:
+		return valid_positions[randi() % valid_positions.size()]
+	else:
+		return current_cell  # Fallback to current position if no valid spot is found
 
 
 func scan_for_food():
@@ -181,10 +231,15 @@ func move_to(target: Vector2i):
 		_move_along_path()  # Call the move logic
 
 var is_happiness_low:bool = false
-func check_for_happiness():
+var is_hunger_low: bool = false
+
+func _move_along_path():
+	if move_index >= path.size():
+		is_moving = false  # End movement when path is exhausted
+		return
 	if happiness <= 0:
 		health -= 2
-	if happiness >= 100:
+	if happiness >= 97:
 		is_happiness_low = false
 	# Check if happiness is too low
 	if happiness <= 30 or is_happiness_low:
@@ -193,16 +248,14 @@ func check_for_happiness():
 		# Regenerate happiness until it reaches 100
 		happiness = min(happiness + 10, 100)
 		happiness -= 2
-		health += 5
+		health += 2
 		await get_tree().create_timer(GENERATION_TIME).timeout
 		_move_along_path()  # Call again after regenerating happiness
 		return
-
-var is_hunger_low: bool = false
-func check_for_hunger():
+		
 	if hunger <= 0:
 		health -= 2
-	if hunger >= 100:
+	if hunger >= 94:
 		is_hunger_low = false
 	# Check if hunger is too low
 	if hunger <= 30 or is_hunger_low:
@@ -215,11 +268,8 @@ func check_for_hunger():
 		await get_tree().create_timer(GENERATION_TIME).timeout
 		_move_along_path()  # Call again after regenerating hunger
 		return
-
-func check_for_stamina():
-	if stamina <= 0:
-		health -= 2
-	if stamina >= 100:
+		
+	if stamina >= 99:
 		is_stamina_low = false
 	# Check if stamina is too low
 	if stamina <= 30 or is_stamina_low:
@@ -227,20 +277,9 @@ func check_for_stamina():
 		print("Stamina exhausted, waiting for recovery...")
 		# Regenerate stamina until it reaches 100
 		stamina = min(stamina + STAMINA_REGEN_RATE, 100)
-		stamina -= 1
-		health += 5
 		await get_tree().create_timer(GENERATION_TIME).timeout
 		_move_along_path()  # Call again after regenerating stamina
 		return
-
-func _move_along_path():
-	if move_index >= path.size():
-		is_moving = false  # End movement when path is exhausted
-		return
-	
-	check_for_stamina()
-	check_for_happiness()
-	check_for_hunger()
 
 	if is_stamina_low == false:
 		var next_pos = Vector2i(path[move_index])  # Get the next point in path
