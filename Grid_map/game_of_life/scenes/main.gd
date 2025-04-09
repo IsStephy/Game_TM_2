@@ -85,8 +85,15 @@ var is_paused = true  # Flag to track pause state
 func _input(event):
 	if event is InputEventKey:
 		if event.pressed and event.keycode == KEY_SPACE:
+<<<<<<< HEAD
 			is_paused = !is_paused  # Toggle pause state
 			print("Game is ","paused" if is_paused else "running")
+=======
+			is_paused = !is_paused  
+			print("Game is ","paused" if is_paused else "runing")
+
+
+>>>>>>> d5bcba37fa892f9aeb0d4853ee83cccb1791ee5f
 
 func _process(delta):
 	if is_paused:
