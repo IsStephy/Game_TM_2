@@ -12,6 +12,7 @@ var height: int = 200
 @onready var human_cells = []
 
 var source_id = 0  
+<<<<<<< HEAD
 var water = Vector2i(5, 24)
 var sand = Vector2i(0, 0)
 var grass = Vector2i(14, 9)
@@ -20,6 +21,16 @@ var flower = Vector2i(19, 33)
 var snow = Vector2i(2, 29)
 var forest = Vector2i(11, 14)
 
+=======
+# TileSet atlas coordinates (arrays for variety)
+var water_tiles = [Vector2i(5, 24)]
+var sand_tiles = [Vector2i(0, 0), Vector2i(1, 0)]
+var grass_tiles = [Vector2i(14, 9), Vector2i(13, 9), Vector2i(15, 9)]
+var mountain_tiles = [Vector2i(0, 14), Vector2i(1, 14), Vector2i(2, 14), Vector2i(3, 14), Vector2i(4, 14), Vector2i(5, 14), Vector2i(6, 14), Vector2i(7, 14), Vector2i(8, 14), Vector2i(9, 14), Vector2i(10, 14), Vector2i(11, 14), Vector2i(12, 14), Vector2i(13, 14), Vector2i(14, 14),Vector2i(15, 14), Vector2i(16, 14), Vector2i(17, 14)]
+var flower_tiles = [Vector2i(19, 33), Vector2i(20, 33)]
+var snow_tiles = [Vector2i(2, 29), Vector2i(3, 29)]
+var forest_tiles = [Vector2i(11, 14), Vector2i(10, 14), Vector2i(12, 14)]
+>>>>>>> aa3cd09e5df1d4246ec425244f17cc4cae674ac2
 var count = 0
 var noise_values = []
 var min_noise: float = INF
@@ -92,6 +103,15 @@ func _unhandled_input(event):
 			if clicked_cell:
 				display_human_cell_details(clicked_cell)
 
+<<<<<<< HEAD
+=======
+
+func choose_tile(tile_array: Array) -> Vector2i:
+	return tile_array[randi() % tile_array.size()]
+
+
+# Function to get the clicked human cell based on its coordinates
+>>>>>>> aa3cd09e5df1d4246ec425244f17cc4cae674ac2
 func get_clicked_human_cell(coords: Vector2i) -> Dictionary:
 	for human_cell in human_cells:
 		if Vector2i(human_cell["pos"]) == coords:
@@ -129,25 +149,25 @@ func generate_world():
 
 			var tile_pos: Vector2i
 			if normalized_noise < thresholds[1]:
-				tile_pos = water
+				tile_pos = choose_tile(water_tiles)
 				weight = 2
 			elif normalized_noise < thresholds[2]:
-				tile_pos = sand
+				tile_pos = choose_tile(sand_tiles)
 				weight = 1
 			else:
-				tile_pos = grass
+				tile_pos = choose_tile(grass_tiles)
 				weight = 1
 				if mountain_chance > 0.25:
-					tile_pos = mountain
+					tile_pos = choose_tile(mountain_tiles)
 					weight = 3
 				elif flower_chance > 0.45:
-					tile_pos = flower
+					tile_pos = choose_tile(flower_tiles)
 					weight = 1
 				elif forest_chance > 0.2:
-					tile_pos = forest
+					tile_pos = choose_tile(forest_tiles)
 					weight = 2
 				elif normalized_noise > thresholds[6]:
-					tile_pos = snow
+					tile_pos = choose_tile(snow_tiles)
 					weight = 3
 
 			weight_map[Vector2i(x, y)] = weight
