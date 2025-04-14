@@ -1,5 +1,4 @@
 extends CharacterBody2D
-
 @export var speed: float = 1500.0  # Adjust speed as needed
 @onready var camera = $Camera2D
 @export var zoom_speed: float = 0.04  # Adjust zoom speed as needed

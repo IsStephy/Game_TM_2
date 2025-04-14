@@ -13,6 +13,11 @@ var humans = []  # Keep track of humans
 
 var source_id = 0  
 
+# Church positions (to ensure only one per 100x100 area)
+var churches = []
+var church_check_timer := 0.0
+var church_check_interval := 10.0
+
 # Multiple tile variants for each terrain type
 var terrain_tiles = {
 	"water": [Vector2i(5, 24)],
@@ -58,10 +63,71 @@ func _ready():
 		generate_world()
 	else:
 		push_error("NoiseTexture2D is not set correctly!")
+	
+	# After world generation, try building the church for each human
+	
 
 	add_child(details_label)
 	details_label.hide()  # Hide the label initially
+	
 
+# Build the church at a specific position
+# Build the church at a specific position
+func build_church(pos: Vector2i):
+	print("Attempting to build church at position:", pos)  # Debug print
+	if can_build_church(pos):
+		# Proceed with church placement
+		print("Building church at position:", pos)  # Debug print
+
+		# Place the church tile (adjust as needed)
+		tile_map.set_cell(pos, source_id, terrain_tiles['grass'][0])  # Adjust tile ID if needed
+
+		# Create and position the church sprite
+		var church_sprite = Sprite2D.new()
+		church_sprite.texture = preload("res://assets/buildings/church.png")
+		var world_pos = tile_map.map_to_local(pos)
+		church_sprite.position = world_pos
+		church_sprite.z_index = 4  # Ensure it's drawn on top
+		add_child(church_sprite)
+
+		# Add the church position to the list
+		churches.append(pos)
+		weight_map[pos] = 0
+		print("Church successfully built at position:", pos)  # Debug print
+	else:
+		print("Cannot build church. Conditions not met.")  # Debug print
+
+# Function to check if a church can be built in the given area
+func can_build_church(pos: Vector2i) -> bool:
+	print("Checking if church can be built at position:", pos)  # Debug print
+
+	# Check for the number of humans in the 10x10 tile range
+	var human_count = 0
+	var range = 5  # 5 tiles in each direction to make a 10x10 area
+	for human in humans:
+		var human_pos = tile_map.local_to_map(human.global_position)
+		if abs(human_pos.x - pos.x) <= range and abs(human_pos.y - pos.y) <= range:
+			human_count += 1
+
+	# Debugging: Print human count in the area
+	print("Human count in area for position", pos, ": ", human_count)
+
+	# If there are more than 6 humans in the 10x10 area, check the church distance
+	if human_count > 6:
+		print("Sufficient humans in the area to build a church.")  # Debug print
+		# Check if the new position is within 100 tiles of any existing church
+		for church_pos in churches:
+			if pos.distance_to(church_pos) < 100:
+				print("Church is too close to another church. Distance: ", pos.distance_to(church_pos))  # Debug print
+				return false  # Too close to another church
+		print("Enough space for the church!")  # Debug print
+		return true
+	else:
+		print("Not enough humans in the area to build a church.")  # Debug print
+		return false
+
+
+# Merge two noise sources for terrain generation
 func merge_noises():
 	for x in range(width):
 		for y in range(height):
@@ -75,14 +141,16 @@ func _unhandled_input(event):
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			print("Clicked at tile:", cell_coords)
 			spawn_human(cell_coords)
+			
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			print("Right-clicked at tile:", cell_coords)
 			for human in humans:
 				if human.global_position == tile_map.map_to_local(cell_coords):
 					show_human_stats(human)
 					return
+			# Call build_church here if right-clicked on a valid tile
 			details_label.hide()
-
+	
 var is_paused = true
 
 func _input(event):
@@ -95,12 +163,23 @@ func _process(delta):
 	if is_paused:
 		return
 
+	church_check_timer += delta
+	if church_check_timer >= church_check_interval:
+		church_check_timer = 0.0  # Reset the timer
+		for human_cell in humans:
+			var human_pos = tile_map.local_to_map(human_cell.global_position)
+			build_church(human_pos)
+
 	for human_cell in humans:
 		if not human_cell["is_moving"]:
 			human_cell.decide_action()
 
+
+		
+
 var used_tiles = {}
 
+# Function to spawn a human at a given position
 func spawn_human(pos: Vector2i):
 	var human_scene = preload("res://scenes/human_cell.tscn")
 	var human = human_scene.instantiate()
@@ -111,14 +190,15 @@ func spawn_human(pos: Vector2i):
 	humans.append(human)
 	print("✅ Spawned human at tile:", pos, " | World pos:", world_pos)
 
+# Function to show the human's stats when clicked
 func show_human_stats(human):
-
 	# Update the label text with human stats using string interpolation
-	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)+"\n Wood amount: "+str(human.wood_amount)
+	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)+"\n Wood amount: "+str(human.wood_amount)+ "\nProfession: "+str(human.profession)+"\nFood Amount: "+str(human.food_amount)
 	details_label.position = get_local_mouse_position() + Vector2(10, 10)  # Position the label near the mouse click
 	details_label.show()  # Make the label visible
 
 
+# Generate the world using noise values
 func generate_world():
 	for x in range(width):
 		for y in range(height):
@@ -152,7 +232,7 @@ func generate_world():
 					weight = tile_weights_map[tile_type]
 				elif normalized_noise > thresholds[6]:
 					tile_type = "snow"
-					weight = tile_weights_map[tile_type]
+					weight = tile_weights_map[tile_type] 
 
 
 			var pos = Vector2i(x, y)
@@ -168,6 +248,7 @@ func generate_world():
 			var node_id = x * height + y
 			connect_hex_neighbors(x, y, node_id)
 
+# Function to connect hexagonal neighbors for A* pathfinding
 func connect_hex_neighbors(x: int, y: int, node_id: int):
 	var directions_1 = [
 		Vector2(-1, 0), Vector2(0 , -1), Vector2(1, 0),
