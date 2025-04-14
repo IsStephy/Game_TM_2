@@ -67,14 +67,14 @@ func _process(_delta):
 		decide_action()
 func get_random_child_count() -> int:
 	var rand_val = randf()  # Random float between 0.0 and 1.0
-	if rand_val < 0.5:      # 50% chance
+	if rand_val < 0.7:      # 70% chance no childe
+		return 0
+	elif rand_val < 0.85:    # 15% chance (50% + 30% = 80%) 1
 		return 1
-	elif rand_val < 0.8:    # 30% chance (50% + 30% = 80%)
+	elif rand_val < 0.95:   # 10% chance (80% + 15% = 95%) 2
 		return 2
-	elif rand_val < 0.95:   # 15% chance (80% + 15% = 95%)
+	else:                   # 5% chance (remaining) 3
 		return 3
-	else:                   # 5% chance (remaining)
-		return 5
 func decide_action():
 	# Adjusting stats
 	age += 1
@@ -140,7 +140,8 @@ func decide_action():
 		if health > 50 and happiness > 50:
 			current_pos = tile_map.local_to_map(global_position)
 			var child_count = get_random_child_count() 
-			print(child_count)
+			print("✅", child_count, " Children are born")
+			
 			for i in range(child_count):
 				var spawned = false
 				for attempt in range(3):
