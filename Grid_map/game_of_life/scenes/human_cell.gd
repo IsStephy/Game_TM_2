@@ -57,6 +57,7 @@ func initialize(map, astar_ref, weights, paused):
 		var sprite = $Cell
 		sprite.position = Vector2.ZERO  # Reset position to (0, 0) relative to the HumanCell node
 func _process(_delta):
+	
 	# Skip everything if the game is paused
 	if is_paused:
 		return
@@ -64,6 +65,16 @@ func _process(_delta):
 		return
 	if not is_moving and stamina > 0:
 		decide_action()
+func get_random_child_count() -> int:
+	var rand_val = randf()  # Random float between 0.0 and 1.0
+	if rand_val < 0.5:      # 50% chance
+		return 1
+	elif rand_val < 0.8:    # 30% chance (50% + 30% = 80%)
+		return 2
+	elif rand_val < 0.95:   # 15% chance (80% + 15% = 95%)
+		return 3
+	else:                   # 5% chance (remaining)
+		return 5
 func decide_action():
 	# Adjusting stats
 	age += 1
@@ -108,6 +119,7 @@ func decide_action():
 		if wood_amount >= 20 and house_count < 3:
 			build_house()
 			return
+		
 	elif profession == Profession.FARMER:
 		var food_pos = scan_for_food(Profession.FARMER)  # Search for food based on perception radius
 		if food_pos:
@@ -122,6 +134,32 @@ func decide_action():
 	var current_pos = tile_map.local_to_map(global_position)
 	var target_pos = current_pos + Vector2i(randi_range(-5, 5), randi_range(-5, 5))
 	move_to(target_pos,profession)
+	
+	var hasreproduced = false
+	if profession != Profession.NONE and !hasreproduced:
+		if health > 50 and happiness > 50:
+			current_pos = tile_map.local_to_map(global_position)
+			var child_count = get_random_child_count() 
+			print(child_count)
+			for i in range(child_count):
+				var spawned = false
+				for attempt in range(3):
+					var nearby_pos = current_pos + Vector2i(randi_range(-1, 1), randi_range(-1, 1))
+					if tile_map.get_cell_source_id(nearby_pos) == 0:  # Check if tile is empty (assuming 0 is empty)
+						$"../".spawn_human(nearby_pos)
+						spawned = true
+						break
+						
+						if spawned:
+							print("✅ Spawned child #", i + 1, " of ", child_count)
+						else:
+							print("❌ Failed to spawn child #", i + 1, " (no valid tile found)")
+						
+						happiness -= 20  # Reduce happiness after reproduction
+						health -= 10 
+						hasreproduced = true # the mark that humans can only reproduce once
+				   # Reduce health after reproduction
+						return
 # Funciton to search for church(weight = 0)
 func search_for_church() -> Vector2i:
 	var current_cell = tile_map.local_to_map(global_position)
