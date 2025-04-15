@@ -19,6 +19,7 @@ var noise: FastNoiseLite
 var noise_2: FastNoiseLite
 var width: int = 200
 var height: int = 200
+var brush_radius := 1 
 var humans = [] 
 
 var source_id = 0  
@@ -78,7 +79,7 @@ func _ready():
 	
 	camera.make_current()
 	setup_camera_limits()
-	camera.zoom = Vector2(0.75, 0.75)
+	camera.zoom = Vector2(2, 2)
 	camera.limit_left = 1
 	camera.limit_top = 1
 
@@ -148,6 +149,40 @@ func setup_terrain_ui():
 		terrain_buttons.add_child(button)
 		terrain_index_map[idx] = terrain_name
 		idx += 1
+	
+		# Create brush size selector
+	var brush_label = Label.new()
+	brush_label.text = "Brush Size:"
+	terrain_buttons.add_child(brush_label)
+
+	var brush_size_selector = OptionButton.new()
+	for i in range(1, 11):
+		brush_size_selector.add_item(str(i), i)
+
+	# Set default brush size
+	brush_size_selector.selected = 0
+	brush_radius = 1  # Ensure this exists at the top of your script
+
+	# Connect signal to update brush_radius
+	brush_size_selector.item_selected.connect(func(index):
+		brush_radius = brush_size_selector.get_item_id(index)
+		print("Brush radius set to:", brush_radius)
+	)
+
+	terrain_buttons.add_child(brush_size_selector)
+
+
+
+func paint_brush(center: Vector2i):
+	for dx in range(-brush_radius + 1, brush_radius):
+		for dy in range(-brush_radius + 1, brush_radius):
+			var pos = center + Vector2i(dx, dy)
+			if pos.x >= 0 and pos.x < width and pos.y >= 0 and pos.y < height:
+				var variants = terrain_tiles[current_brush]
+				var random_tile = variants[randi() % variants.size()]
+				tile_map.set_cell(pos, source_id, random_tile)
+				weight_map[pos] = tile_weights_map[current_brush]
+
 
 # Add this function to handle removing humans from the array
 func remove_human(human):
@@ -224,8 +259,7 @@ func _unhandled_input(event):
 				if terrain_mode and current_brush != "":
 					var variants = terrain_tiles[current_brush]
 					var random_tile = variants[randi() % variants.size()]
-					tile_map.set_cell(cell_coords, source_id, random_tile)
-					weight_map[cell_coords] = tile_weights_map[current_brush]
+					paint_brush(cell_coords)
 				else:
 					spawn_human(cell_coords)
 
@@ -238,11 +272,18 @@ func _unhandled_input(event):
 			details_label.hide()
 
 	elif event is InputEventMouseMotion and is_painting and terrain_mode and current_brush != "":
-		var cell_coords = tile_map.local_to_map(get_local_mouse_position())
-		var variants = terrain_tiles[current_brush]
-		var random_tile = variants[randi() % variants.size()]
-		tile_map.set_cell(cell_coords, source_id, random_tile)
-		weight_map[cell_coords] = tile_weights_map[current_brush]
+		var center = tile_map.local_to_map(get_local_mouse_position())
+
+		for dx in range(-brush_radius, brush_radius + 1):
+			for dy in range(-brush_radius, brush_radius + 1):
+				var offset = Vector2i(dx, dy)
+				var target = center + offset
+				if tile_map.get_cell_source_id(target) != -1:
+					var variants = terrain_tiles[current_brush]
+					var random_tile = variants[randi() % variants.size()]
+					tile_map.set_cell(target, source_id, random_tile)
+					weight_map[target] = tile_weights_map[current_brush]
+
 
 	
 var is_paused = true
