@@ -414,18 +414,3 @@ func connect_hex_neighbors(x: int, y: int, node_id: int):
 
 func hide_human_stats():
 	details_label.hide()
-
-#func delete_half_of_humans():
-	#if humans.size() <= 1:
-		#print("Not enough humans to delete.")
-		#return
-#
-	#var to_remove = humans.size() / 2
-	#print("Deleting ", to_remove, " humans...")
-#
-	#for i in range(to_remove):
-		#var human = humans.pop_back()
-		#if human:
-			#remove_human(human)
-			#queue_free()
-			

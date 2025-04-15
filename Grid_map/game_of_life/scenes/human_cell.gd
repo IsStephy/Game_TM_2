@@ -107,6 +107,9 @@ func get_random_child_count() -> int:
 		return 3
 func decide_action():
 	# Adjusting stats
+	if is_moving:
+		return
+	
 	age += 1
 	hunger -= 3  # Decreases hunger over time
 	stamina -= 1  # Decreases stamina over time
@@ -129,7 +132,7 @@ func decide_action():
 			if forest_pos:
 				move_to(forest_pos,profession)  # Move to the forest to gather wood
 				return
-		if health >= 75 and happiness >= 75 and hunger >= 75:
+		if health >= 65 and happiness >= 65 and hunger >= 65:
 			var church_pos = search_for_church()
 			if church_pos:
 				move_to(church_pos,profession)
@@ -200,26 +203,30 @@ func search_for_church() -> Vector2i:
 			if weight_map.has(check_pos) and weight_map[check_pos] == 0:
 				return check_pos
 	return Vector2i(-1,-1)
+	
 func wait_for_profession_at_church():
-	is_moving = false  # Stop further movement
-	print("At church. Waiting for profession blessing...")
-	# Wait 3 generations, then try to get profession
-	await get_tree().create_timer(GENERATION_TIME * 3).timeout
-	var new_prof = randi() % 4
-	profession = new_prof
-	match new_prof:
-		0:
-			profession = Profession.BUILDER
-			$Cell.texture = load("res://assets/character/builder.png")
-		1:
-			profession = Profession.FARMER
-			$Cell.texture = load("res://assets/character/farmer.png")
-		2:
-			profession = Profession.FISHER
-			$Cell.texture = load("res://assets/character/fisher.png")
-		3:
-			profession = Profession.HUNTER
-			$Cell.texture = load("res://assets/character/hunter.png")
+	var church_pos = search_for_church()
+	
+	if tile_map.local_to_map(global_position) == church_pos:
+		is_moving = false  # Stop further movement
+		print("At church. Waiting for profession blessing...")
+		# Wait 3 generations, then try to get profession
+		await get_tree().create_timer(GENERATION_TIME * 1).timeout
+		var new_prof = randi() % 4
+		profession = new_prof
+		match new_prof:
+			0:
+				profession = Profession.BUILDER
+				$Cell.texture = load("res://assets/character/builder.png")
+			1:
+				profession = Profession.FARMER
+				$Cell.texture = load("res://assets/character/farmer.png")
+			2:
+				profession = Profession.FISHER
+				$Cell.texture = load("res://assets/character/fisher.png")
+			3:
+				profession = Profession.HUNTER
+				$Cell.texture = load("res://assets/character/hunter.png")
 # Function to search for forest (weight 2) within a radius of 10
 func search_for_wood():
 	var current_cell = tile_map.local_to_map(global_position)
@@ -328,10 +335,12 @@ func _move_along_path(profession):
 	if move_index >= path.size():
 		is_moving = false  # End movement when path is exhausted
 		return
+		
 	if happiness <= 0:
 		health -= 2
 	if happiness >= 97:
 		is_happiness_low = false
+		
 	# Check if happiness is too low
 	if happiness <= 30 or is_happiness_low:
 		is_happiness_low = true
@@ -343,10 +352,12 @@ func _move_along_path(profession):
 		await get_tree().create_timer(GENERATION_TIME).timeout
 		_move_along_path(profession)  # Call again after regenerating happiness
 		return
+		
 	if hunger <= 0:
 		health -= 2
 	if hunger >= 94:
 		is_hunger_low = false
+		
 	# Check if hunger is too low
 	if hunger <= 30 or is_hunger_low:
 		is_hunger_low = true
@@ -359,6 +370,7 @@ func _move_along_path(profession):
 		await get_tree().create_timer(GENERATION_TIME).timeout
 		_move_along_path(profession)  # Call again after regenerating hunger
 		return
+		
 	if stamina >= 99:
 		is_stamina_low = false
 	# Check if stamina is too low
@@ -380,6 +392,7 @@ func _move_along_path(profession):
 			print("A human ran out of stamina!")
 			is_moving = false
 			return
+		
 		# Check if the human is on a forest tile (weight 2) and gather wood
 		if weight_map.get(next_pos) == 2:  # Forest tile
 			gather_wood(profession)
@@ -394,6 +407,7 @@ func _move_along_path(profession):
 		# Call again after some delay
 		await get_tree().create_timer(GENERATION_TIME).timeout
 		_move_along_path(profession)  # Recursively move along the path
+
 # New function to gather food when on a food resource tile
 func gather_food(profession):
 	if profession == Profession.FISHER or profession == Profession.FARMER or profession == Profession.HUNTER:
