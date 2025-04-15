@@ -5,7 +5,7 @@ var happiness: int = 100
 var stamina: int = 100
 var hunger: int = 100  # Hunger stat
 var age: int = 0
-var max_age: int = 400
+var max_age: int = 15
 var wood_amount: int = 0
 var house_count: int = 0  # Track number of houses built
 var food_amount: int = 0  # New variable for food, max 10
@@ -33,6 +33,20 @@ var profession: Profession
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	print("✅ Human ready.")
+	# Add hover detection
+	var hover_area = Area2D.new()
+	hover_area.name = "HoverArea"
+	add_child(hover_area)
+
+	var collision_shape = CollisionShape2D.new()
+	var shape = RectangleShape2D.new()
+	shape.size = Vector2(32, 32)
+	collision_shape.shape = shape
+	hover_area.add_child(collision_shape)
+
+	hover_area.connect("mouse_entered", Callable(self, "_on_mouse_entered"))
+	hover_area.connect("mouse_exited", Callable(self, "_on_mouse_exited"))
+
 	if has_node("Cell"):
 		var sprite = $Cell
 		sprite.visible = true
@@ -51,6 +65,8 @@ func initialize(map, astar_ref, weights, paused):
 	weight_map = weights
 	is_paused = paused  # Set paused flag from main.gd
 	initialized = true
+	age = 0
+	max_age = 15
 	print("✅ Human initialized!")
 	# After initialization, move sprite to the correct position on the map
 	if has_node("Cell"):
@@ -63,8 +79,22 @@ func _process(_delta):
 		return
 	if not initialized or not is_inside_tree():
 		return
+	if age >= max_age or health <= 0 or hunger <= 0:
+		die()
+		return
 	if not is_moving and stamina > 0:
 		decide_action()
+
+func die():
+	print("❌ Human died at age:", age)
+	# Remove from the humans array in main.gd
+	var main = get_parent()
+	if main and main.has_method("remove_human"):
+		main.remove_human(self)
+	is_moving = false
+	# Remove the node itself
+	queue_free()
+
 func get_random_child_count() -> int:
 	var rand_val = randf()  # Random float between 0.0 and 1.0
 	if rand_val < 0.7:      # 70% chance no childe
@@ -378,3 +408,9 @@ func gather_food(profession):
 			print("Gathered food. Current food amount: ", food_amount)
 
 		food_amount = min(food_amount + 1, 10)  # Increase food by 1 per generation, max 10
+
+func _on_mouse_entered():
+	get_parent().show_human_stats(self)
+
+func _on_mouse_exited():
+	get_parent().hide_human_stats()

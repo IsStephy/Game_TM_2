@@ -184,6 +184,11 @@ func paint_brush(center: Vector2i):
 				weight_map[pos] = tile_weights_map[current_brush]
 
 
+# Add this function to handle removing humans from the array
+func remove_human(human):
+	if humans.has(human):
+		humans.erase(human)
+		print("Human removed from tracking array")
 # Build the church at a specific position
 func build_church(pos: Vector2i):
 	print("Attempting to build church at position:", pos) 
@@ -297,6 +302,15 @@ func _input(event):
 			var index = event.keycode - KEY_0
 			if terrain_index_map.has(index):
 				current_brush = terrain_index_map[index]
+				
+		if event.pressed and event.keycode == KEY_T:
+			var half_count = humans.size() / 2
+			print("Removing half the human population: ", int(half_count), " humans")
+
+			for i in range(int(half_count)):
+				var human = humans.pop_back()
+				if human:
+					human.queue_free()
 	
 
 func _process(delta):
@@ -318,14 +332,26 @@ func _process(delta):
 
 	church_check_timer += delta
 	if church_check_timer >= church_check_interval:
-		church_check_timer = 0.0  
-		for human_cell in humans:
-			var human_pos = tile_map.local_to_map(human_cell.global_position)
-			build_church(human_pos)
+		church_check_timer = 0.0  # Reset the timer
+		
+		 # Create a copy of the humans array to safely iterate
+		var valid_humans = humans.duplicate()
+		for human_cell in valid_humans:
+			if is_instance_valid(human_cell) and human_cell.is_inside_tree():
+				var human_pos = tile_map.local_to_map(human_cell.global_position)
+				build_church(human_pos)
 
-	for human_cell in humans:
-		if not human_cell["is_moving"]:
-			human_cell.decide_action()
+	# Create a copy of the humans array to safely iterate
+	var humans_to_check = humans.duplicate()
+	for i in range(humans_to_check.size() - 1, -1, -1):
+		var human_cell = humans_to_check[i]
+		if is_instance_valid(human_cell) and human_cell.is_inside_tree():
+			if not human_cell.is_moving:
+				human_cell.decide_action()
+		else:
+			# If human is no longer valid, remove it from the original array
+			if humans.has(human_cell):
+				humans.erase(human_cell)
 
 
 		
@@ -334,6 +360,9 @@ var used_tiles = {}
 
 
 func spawn_human(pos: Vector2i):
+	if pos.x < 0 or pos.x >= width or pos.y < 0 or pos.y >= height:
+		print("❌ Cannot spawn human outside map boundaries")
+		return
 	var human_scene = preload("res://scenes/human_cell.tscn")
 	var human = human_scene.instantiate()
 	var world_pos = tile_map.map_to_local(pos)
@@ -345,7 +374,7 @@ func spawn_human(pos: Vector2i):
 
 func show_human_stats(human):
 
-	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)+"\n Wood amount: "+str(human.wood_amount)+ "\nProfession: "+str(human.profession)+"\nFood Amount: "+str(human.food_amount)
+	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\n Wood amount: "+str(human.wood_amount)+ "\nProfession: "+str(human.profession)+"\nFood Amount: "+str(human.food_amount)
 	details_label.position = get_local_mouse_position() + Vector2(10, 10)
 	details_label.show() 
 
@@ -423,3 +452,21 @@ func connect_hex_neighbors(x: int, y: int, node_id: int):
 			if nx >= 0 and nx < width and ny >= 0 and ny < height:
 				var neighbor_id = nx * height + ny
 				astar.connect_points(node_id, neighbor_id, true)
+
+func hide_human_stats():
+	details_label.hide()
+
+#func delete_half_of_humans():
+	#if humans.size() <= 1:
+		#print("Not enough humans to delete.")
+		#return
+#
+	#var to_remove = humans.size() / 2
+	#print("Deleting ", to_remove, " humans...")
+#
+	#for i in range(to_remove):
+		#var human = humans.pop_back()
+		#if human:
+			#remove_human(human)
+			#queue_free()
+			
