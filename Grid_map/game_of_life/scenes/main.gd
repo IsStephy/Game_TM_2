@@ -14,6 +14,10 @@ var terrain_mode: bool = false
 var terrain_toggle_cooldown := 0.2
 var terrain_toggle_timer := 0.0
 var terrain_index_map: Dictionary = {}
+var flower_decay_timer := 0.0
+var flower_life_queue := [] 
+const FLOWER_DECAY_INTERVAL := 15.0 
+const FLOWER_LIFESPAN := 25.0
 
 var noise: FastNoiseLite
 var noise_2: FastNoiseLite
@@ -312,8 +316,97 @@ func _input(event):
 				if human:
 					human.queue_free()
 	
+func withering_flowers(delta):
+	if is_paused:
+		return
+
+	var to_remove := []
+	for flower in flower_life_queue:
+		flower.age += delta
+		if flower.age >= flower.decay_time:
+			var pos = flower.pos
+			if weight_map.has(pos) and weight_map[pos] == 1.5:
+				var grass_variants = terrain_tiles["grass"]
+				var random_grass = grass_variants[randi() % grass_variants.size()]
+				tile_map.set_cell(pos, source_id, random_grass)
+				weight_map[pos] = 1
+				to_remove.append(flower)
+
+	for f in to_remove:
+		flower_life_queue.erase(f)
+
+
+func update_flower_decay(delta):
+	var updated_queue = []
+	for flower_data in flower_life_queue:
+		flower_data["age"] += delta
+		if flower_data["age"] >= FLOWER_LIFESPAN:
+			var pos = flower_data["pos"]
+			if weight_map.has(pos) and weight_map[pos] == 1.5:
+				tile_map.set_cell(pos, source_id, terrain_tiles["grass"].pick_random())
+				weight_map[pos] = 1
+				print("💐 A flower has withered at ", pos)
+		else:
+			updated_queue.append(flower_data)
+	flower_life_queue = updated_queue
+
+
+func spread_flowers():
+	for pos in weight_map.keys():
+		if weight_map[pos] == 1.5:
+			for offset in [
+				Vector2i(1, 0), Vector2i(-1, 0),
+				Vector2i(0, 1), Vector2i(0, -1)
+			]:
+				var neighbor = pos + offset
+				if weight_map.has(neighbor) and weight_map[neighbor] == 1:
+					if randf() < 0.1:
+						var random_tile = terrain_tiles["flower"].pick_random()
+						tile_map.set_cell(neighbor, source_id, random_tile)
+						weight_map[neighbor] = 1.5
+						flower_life_queue.append({
+							"pos": pos,
+							"age": 0.0,
+							"decay_time": randf_range(10.0, 25.0) 
+						})
+						print("🌸 A new flower grew at ", neighbor)
+
+
+func regrow_forest():
+	if is_paused:
+		return
+
+	var directions = [
+		Vector2i(1, 0), Vector2i(-1, 0),
+		Vector2i(0, 1), Vector2i(0, -1),
+		Vector2i(1, 1), Vector2i(-1, -1),
+		Vector2i(1, -1), Vector2i(-1, 1)
+	]
+
+	for pos in weight_map.keys():
+		if weight_map[pos] == 1 and randf() < 0.5: 
+			var has_forest_neighbor := false
+			for offset in directions:
+				var neighbor = pos + offset
+				if weight_map.has(neighbor) and weight_map[neighbor] == 2:
+					has_forest_neighbor = true
+					break
+
+			if has_forest_neighbor:
+				tile_map.set_cell(pos, source_id, terrain_tiles["forest"].pick_random())
+				weight_map[pos] = 2
+				print("🌲 Forest regrew at ", pos)
+
+
+
 
 func _process(delta):
+	if not is_paused:
+		withering_flowers(delta)
+		spread_flowers()
+		regrow_forest()
+		update_flower_decay(delta)
+		
 	var tile_size = tile_map.tile_set.tile_size
 	var used_rect = tile_map.get_used_rect()
 	var map_pixel_size = used_rect.size * tile_size
@@ -404,7 +497,7 @@ func generate_world():
 				if mountain_chance > 0.25:
 					tile_type = "mountain"
 					weight = tile_weights_map[tile_type]
-				elif flower_chance > 0.65:
+				elif flower_chance > 0.45:
 					tile_type = "flower"
 					weight = tile_weights_map[tile_type]
 				elif forest_chance > 0.2:
@@ -416,6 +509,13 @@ func generate_world():
 
 
 			var pos = Vector2i(x, y)
+			if tile_type == "flower":
+				flower_life_queue.append({
+					"pos": pos,
+					"age": 0.0,
+					"decay_time": randf_range(10.0, 25.0) 
+				})
+
 			weight_map[pos] = weight
 			var variants = terrain_tiles[tile_type]
 			var random_tile = variants[randi() % variants.size()]

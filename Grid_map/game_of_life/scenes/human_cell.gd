@@ -235,16 +235,23 @@ func search_for_wood():
 	return null
 # Function to gather wood when staying in a forest (weight 2)
 func gather_wood(profession):
+	var current_cell = tile_map.local_to_map(global_position)
 	if profession == Profession.BUILDER:
-		if wood_amount < 120:  # Check if the human can still gather wood (max 30)
-			wood_amount = min(wood_amount + 3, 30)  # Increase wood by 3 per generation, max 30
-			print("Gathered wood. Current wood amount: ", wood_amount)
-			if happiness<=100:
-				happiness+= 3
+		if wood_amount < 120:
+			wood_amount = min(wood_amount + 3, 120)
+			print("Gathered wood. Builder's current wood: ", wood_amount)
 	else:
-		if wood_amount < 30:  # Check if the human can still gather wood (max 30)
-			wood_amount = min(wood_amount + 3, 30)  # Increase wood by 3 per generation, max 30
-			print("Gathered wood. Current wood amount: ", wood_amount)
+		if wood_amount < 30:
+			wood_amount = min(wood_amount + 3, 30)
+			print("Gathered wood. Current wood: ", wood_amount)
+
+	# Deplete forest tile (turn into grass after gathering)
+	if weight_map.has(current_cell) and weight_map[current_cell] == 2:
+		weight_map[current_cell] = 1
+		var grass_variants = get_parent().terrain_tiles["grass"]
+		var random_grass = grass_variants[randi() % grass_variants.size()]
+		tile_map.set_cell(current_cell, get_parent().source_id, random_grass)
+
 # Preload the house texture
 var house_texture = preload("res://assets/buildings/house.png")
 # Function to build a house if the human has enough wood
