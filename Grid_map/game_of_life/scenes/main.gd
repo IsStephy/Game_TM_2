@@ -360,7 +360,7 @@ func spread_flowers():
 			]:
 				var neighbor = pos + offset
 				if weight_map.has(neighbor) and weight_map[neighbor] == 1:
-					if randf() < 0.1:
+					if randf() < 0.001:
 						var random_tile = terrain_tiles["flower"].pick_random()
 						tile_map.set_cell(neighbor, source_id, random_tile)
 						weight_map[neighbor] = 1.5
@@ -384,7 +384,7 @@ func regrow_forest():
 	]
 
 	for pos in weight_map.keys():
-		if weight_map[pos] == 1 and randf() < 0.5: 
+		if weight_map[pos] == 1 and randf() < 0.0005: 
 			var has_forest_neighbor := false
 			for offset in directions:
 				var neighbor = pos + offset
@@ -555,3 +555,18 @@ func connect_hex_neighbors(x: int, y: int, node_id: int):
 
 func hide_human_stats():
 	details_label.hide()
+
+#func delete_half_of_humans():
+	#if humans.size() <= 1:
+		#print("Not enough humans to delete.")
+		#return
+#
+	#var to_remove = humans.size() / 2
+	#print("Deleting ", to_remove, " humans...")
+#
+	#for i in range(to_remove):
+		#var human = humans.pop_back()
+		#if human:
+			#remove_human(human)
+			#queue_free()
+			
