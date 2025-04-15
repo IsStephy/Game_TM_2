@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3 uid="uid://7af65tspcr6"]
+
+[ext_resource type="Script" path="res://scenes/intro_scene.gd" id="1_v0dcf"]
+[ext_resource type="VideoStream" path="res://vid_intro/hyper_mega_logo.ogv" id="2_oeyll"]
+
+[node name="IntroScene" type="Node"]
+script = ExtResource("1_v0dcf")
+
+[node name="VideoStreamPlayer" type="VideoStreamPlayer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -184.0
+offset_right = 320.0
+offset_bottom = 184.0
+grow_horizontal = 2
+grow_vertical = 2
+stream = ExtResource("2_oeyll")
+autoplay = true
