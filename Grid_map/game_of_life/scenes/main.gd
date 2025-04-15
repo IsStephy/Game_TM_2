@@ -5,6 +5,9 @@ extends Node2D
 @onready var ui_layer := CanvasLayer.new()
 @onready var terrain_panel := PanelContainer.new()
 @onready var terrain_buttons := VBoxContainer.new()
+@onready var camera = $CharacterBody2D/Camera2D
+@onready var tile_map = $TileMapLayer
+@onready var astar = AStar2D.new()
 
 var current_brush: String = ""
 var terrain_mode: bool = false
@@ -16,18 +19,14 @@ var noise: FastNoiseLite
 var noise_2: FastNoiseLite
 var width: int = 200
 var height: int = 200
-@onready var tile_map = $TileMapLayer
-@onready var astar = AStar2D.new()
-var humans = []  # Keep track of humans
+var humans = [] 
 
 var source_id = 0  
 
-# Church positions (to ensure only one per 100x100 area)
 var churches = []
 var church_check_timer := 0.0
 var church_check_interval := 10.0
 
-# Multiple tile variants for each terrain type
 var terrain_tiles = {
 	"water": [Vector2i(5, 24)],
 	"sand": [Vector2i(0, 17), Vector2i(1, 17), Vector2i(2, 17), Vector2i(3, 17), Vector2i(4, 17), Vector2i(0, 18), Vector2i(1, 18), Vector2i(2, 18), Vector2i(4, 19), Vector2i(4, 19), Vector2i(4, 0)],
@@ -73,12 +72,56 @@ func _ready():
 		generate_world()
 	else:
 		push_error("NoiseTexture2D is not set correctly!")
-	
-	# After world generation, try building the church for each human
-	
-
+		
 	add_child(details_label)
-	details_label.hide()  # Hide the label initially
+	details_label.hide()
+	
+	camera.make_current()
+	setup_camera_limits()
+	camera.zoom = Vector2(0.75, 0.75)
+	camera.limit_left = 1
+	camera.limit_top = 1
+
+	var tile_size = tile_map.tile_set.tile_size
+	var map_rect = tile_map.get_used_rect()
+	var map_size = map_rect.size * tile_size
+	var center_pos = tile_map.map_to_local(Vector2i(width / 2, height / 2))
+	$CharacterBody2D.global_position = center_pos
+	camera.limit_right = map_size.x - 1
+	camera.limit_bottom = map_size.y - 1
+
+	camera.make_current()
+	
+func setup_camera_limits():
+	var tile_size: Vector2i = tile_map.tile_set.tile_size  
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	var map_tiles_x = used_rect.size.x
+	var map_tiles_y = used_rect.size.y
+
+	var total_map_width = (map_tiles_x + 0.5) * tile_size.x
+	var total_map_height = (map_tiles_y * 0.75 + 0.25) * tile_size.y 
+
+	var viewport_size = get_viewport().get_visible_rect().size
+
+	var min_zoom_x = viewport_size.x / total_map_width
+	var min_zoom_y = viewport_size.y / total_map_height
+	var min_zoom = max(min_zoom_x, min_zoom_y)
+
+	var max_zoom = 2.0 
+
+	camera.zoom = Vector2(min_zoom + 0.1, min_zoom + 0.1)
+	camera.set_meta("min_zoom", min_zoom)
+	camera.set_meta("max_zoom", max_zoom)
+
+	var margin_x = tile_size.x
+	var margin_y = tile_size.y
+
+	camera.limit_left = 0 + margin_x
+	camera.limit_top = 0 + margin_y
+	camera.limit_right = int(total_map_width) - margin_x
+	camera.limit_bottom = int(total_map_height) - margin_y
+
+
 	
 
 
@@ -107,34 +150,28 @@ func setup_terrain_ui():
 		idx += 1
 
 # Build the church at a specific position
-# Build the church at a specific position
 func build_church(pos: Vector2i):
-	print("Attempting to build church at position:", pos)  # Debug print
+	print("Attempting to build church at position:", pos) 
 	if can_build_church(pos):
-		# Proceed with church placement
-		print("Building church at position:", pos)  # Debug print
+		print("Building church at position:", pos)
 
-		# Place the church tile (adjust as needed)
-		tile_map.set_cell(pos, source_id, terrain_tiles['grass'][0])  # Adjust tile ID if needed
+		tile_map.set_cell(pos, source_id, terrain_tiles['grass'][0]) 
 
-		# Create and position the church sprite
 		var church_sprite = Sprite2D.new()
 		church_sprite.texture = preload("res://assets/buildings/church.png")
 		var world_pos = tile_map.map_to_local(pos)
 		church_sprite.position = world_pos
-		church_sprite.z_index = 4  # Ensure it's drawn on top
+		church_sprite.z_index = 4 
 		add_child(church_sprite)
 
-		# Add the church position to the list
 		churches.append(pos)
 		weight_map[pos] = 0
-		print("Church successfully built at position:", pos)  # Debug print
+		print("Church successfully built at position:", pos)  
 	else:
-		print("Cannot build church. Conditions not met.")  # Debug print
+		print("Cannot build church. Conditions not met.") 
 
-# Function to check if a church can be built in the given area
 func can_build_church(pos: Vector2i) -> bool:
-	print("Checking if church can be built at position:", pos)  # Debug print
+	print("Checking if church can be built at position:", pos) 
 
 	# Check for the number of humans in the 10x10 tile range
 	var human_count = 0
@@ -222,15 +259,25 @@ func _input(event):
 	
 
 func _process(delta):
+	var tile_size = tile_map.tile_set.tile_size
+	var used_rect = tile_map.get_used_rect()
+	var map_pixel_size = used_rect.size * tile_size
+	var screen_size = get_viewport().size
+
 	if terrain_toggle_timer > 0.0:
 		terrain_toggle_timer -= delta
+
+	var min_zoom = camera.get_meta("min_zoom")
+	var max_zoom = camera.get_meta("max_zoom")
+	camera.zoom.x = clamp(camera.zoom.x, min_zoom, max_zoom)
+	camera.zoom.y = clamp(camera.zoom.y, min_zoom, max_zoom)
 	if is_paused:
 		return
-	
+	print(len(humans))
 
 	church_check_timer += delta
 	if church_check_timer >= church_check_interval:
-		church_check_timer = 0.0  # Reset the timer
+		church_check_timer = 0.0  
 		for human_cell in humans:
 			var human_pos = tile_map.local_to_map(human_cell.global_position)
 			build_church(human_pos)
@@ -244,7 +291,7 @@ func _process(delta):
 
 var used_tiles = {}
 
-# Function to spawn a human at a given position
+
 func spawn_human(pos: Vector2i):
 	var human_scene = preload("res://scenes/human_cell.tscn")
 	var human = human_scene.instantiate()
@@ -255,15 +302,13 @@ func spawn_human(pos: Vector2i):
 	humans.append(human)
 	print("✅ Spawned human at tile:", pos, " | World pos:", world_pos)
 
-# Function to show the human's stats when clicked
 func show_human_stats(human):
-	# Update the label text with human stats using string interpolation
+
 	details_label.text = "Health: " + str(human.health) + "\n Happiness: " + str(human.happiness) + "\nStamina: " + str(human.stamina) + "\n Hunger: " + str(human.hunger) + "\nAge: " + str(human.age) + "\nMax Age: " + str(human.max_age)+"\n Wood amount: "+str(human.wood_amount)+ "\nProfession: "+str(human.profession)+"\nFood Amount: "+str(human.food_amount)
-	details_label.position = get_local_mouse_position() + Vector2(10, 10)  # Position the label near the mouse click
-	details_label.show()  # Make the label visible
+	details_label.position = get_local_mouse_position() + Vector2(10, 10)
+	details_label.show() 
 
 
-# Generate the world using noise values
 func generate_world():
 	for x in range(width):
 		for y in range(height):
