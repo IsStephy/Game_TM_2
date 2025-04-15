@@ -2,6 +2,15 @@ extends Node2D
 
 @export var noise_height_text: NoiseTexture2D
 @export var second_noise: NoiseTexture2D
+@onready var ui_layer := CanvasLayer.new()
+@onready var terrain_panel := PanelContainer.new()
+@onready var terrain_buttons := VBoxContainer.new()
+
+var current_brush: String = ""
+var terrain_mode: bool = false
+var terrain_toggle_cooldown := 0.2
+var terrain_toggle_timer := 0.0
+var terrain_index_map: Dictionary = {}
 
 var noise: FastNoiseLite
 var noise_2: FastNoiseLite
@@ -51,6 +60,7 @@ var thresholds = [
 @onready var details_label = Label.new()
 
 func _ready():
+	setup_terrain_ui()
 	if noise_height_text and noise_height_text.noise:
 		noise_height_text.noise.seed = randi()
 		second_noise.noise.seed = randi()
@@ -70,6 +80,31 @@ func _ready():
 	add_child(details_label)
 	details_label.hide()  # Hide the label initially
 	
+
+
+func setup_terrain_ui():
+	add_child(ui_layer)
+
+	terrain_panel.visible = false
+	terrain_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	terrain_panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+
+	terrain_buttons.alignment = BoxContainer.ALIGNMENT_BEGIN
+	terrain_panel.add_child(terrain_buttons)
+	ui_layer.add_child(terrain_panel)
+
+	var idx = 1
+	for terrain_name in terrain_tiles.keys():
+		var button = Button.new()
+		button.text = str(idx) + ". " + terrain_name.capitalize()
+		button.name = terrain_name
+		button.pressed.connect(func():
+			current_brush = terrain_name
+			print("Selected terrain:", current_brush)
+		)
+		terrain_buttons.add_child(button)
+		terrain_index_map[idx] = terrain_name
+		idx += 1
 
 # Build the church at a specific position
 # Build the church at a specific position
@@ -133,23 +168,40 @@ func merge_noises():
 		for y in range(height):
 			noise_values.append((noise.get_noise_2d(x, y) + noise_2.get_noise_2d(x, y)) / 2)
 
+var is_painting := false  # ← place this at the top level of your script
+
 func _unhandled_input(event):
-	if event is InputEventMouseButton and event.pressed:
+	if event is InputEventMouseButton:
 		var mouse_pos = get_local_mouse_position()
 		var cell_coords = tile_map.local_to_map(mouse_pos)
-		
+
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			print("Clicked at tile:", cell_coords)
-			spawn_human(cell_coords)
-			
+			is_painting = event.pressed  # true when pressed, false when released
+
+			if event.pressed:
+				if terrain_mode and current_brush != "":
+					var variants = terrain_tiles[current_brush]
+					var random_tile = variants[randi() % variants.size()]
+					tile_map.set_cell(cell_coords, source_id, random_tile)
+					weight_map[cell_coords] = tile_weights_map[current_brush]
+				else:
+					spawn_human(cell_coords)
+
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			print("Right-clicked at tile:", cell_coords)
 			for human in humans:
 				if human.global_position == tile_map.map_to_local(cell_coords):
 					show_human_stats(human)
 					return
-			# Call build_church here if right-clicked on a valid tile
 			details_label.hide()
+
+	elif event is InputEventMouseMotion and is_painting and terrain_mode and current_brush != "":
+		var cell_coords = tile_map.local_to_map(get_local_mouse_position())
+		var variants = terrain_tiles[current_brush]
+		var random_tile = variants[randi() % variants.size()]
+		tile_map.set_cell(cell_coords, source_id, random_tile)
+		weight_map[cell_coords] = tile_weights_map[current_brush]
+
 	
 var is_paused = true
 
@@ -158,10 +210,23 @@ func _input(event):
 		if event.pressed and event.keycode == KEY_SPACE:
 			is_paused = !is_paused
 			print("Game is ","paused" if is_paused else "running")
+		if event.keycode == KEY_QUOTELEFT and terrain_toggle_timer <= 0.0:
+			terrain_mode = !terrain_mode
+			terrain_toggle_timer = terrain_toggle_cooldown
+			terrain_panel.visible = terrain_mode
+
+		if terrain_mode and event.keycode >= KEY_1 and event.keycode <= KEY_9:
+			var index = event.keycode - KEY_0
+			if terrain_index_map.has(index):
+				current_brush = terrain_index_map[index]
+	
 
 func _process(delta):
+	if terrain_toggle_timer > 0.0:
+		terrain_toggle_timer -= delta
 	if is_paused:
 		return
+	
 
 	church_check_timer += delta
 	if church_check_timer >= church_check_interval:
