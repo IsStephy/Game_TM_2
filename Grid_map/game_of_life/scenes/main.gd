@@ -261,6 +261,15 @@ func _input(event):
 			var index = event.keycode - KEY_0
 			if terrain_index_map.has(index):
 				current_brush = terrain_index_map[index]
+				
+		if event.pressed and event.keycode == KEY_T:
+			var half_count = humans.size() / 2
+			print("Removing half the human population: ", int(half_count), " humans")
+
+			for i in range(int(half_count)):
+				var human = humans.pop_back()
+				if human:
+					human.queue_free()
 	
 
 func _process(delta):
@@ -405,3 +414,18 @@ func connect_hex_neighbors(x: int, y: int, node_id: int):
 
 func hide_human_stats():
 	details_label.hide()
+
+#func delete_half_of_humans():
+	#if humans.size() <= 1:
+		#print("Not enough humans to delete.")
+		#return
+#
+	#var to_remove = humans.size() / 2
+	#print("Deleting ", to_remove, " humans...")
+#
+	#for i in range(to_remove):
+		#var human = humans.pop_back()
+		#if human:
+			#remove_human(human)
+			#queue_free()
+			
