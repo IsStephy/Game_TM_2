@@ -8,6 +8,8 @@ extends Node2D
 @onready var camera = $CharacterBody2D/Camera2D
 @onready var tile_map = $TileMapLayer
 @onready var astar = AStar2D.new()
+@onready var reset_button = $CanvasLayer/ResetBtn
+@onready var info_button = $CanvasLayer/InfoBtn
 
 var current_brush: String = ""
 var terrain_mode: bool = false
@@ -31,6 +33,10 @@ var source_id = 0
 var churches = []
 var church_check_timer := 0.0
 var church_check_interval := 10.0
+
+var houses = []
+var house_sprites = []
+var house_count = 0
 
 var terrain_tiles = {
 	"water": [Vector2i(5, 24)],
@@ -64,6 +70,12 @@ var thresholds = [
 @onready var details_label = Label.new()
 
 func _ready():
+	humans = []
+	churches = []
+	houses = []
+	house_sprites = []
+	house_count = 0
+	
 	setup_terrain_ui()
 	if noise_height_text and noise_height_text.noise:
 		noise_height_text.noise.seed = randi()
@@ -96,6 +108,9 @@ func _ready():
 	camera.limit_bottom = map_size.y - 1
 
 	camera.make_current()
+	
+	reset_button.pressed.connect(reset_simulation)
+	info_button.pressed.connect(show_info_popup)
 	
 func setup_camera_limits():
 	var tile_size: Vector2i = tile_map.tile_set.tile_size  
@@ -556,17 +571,74 @@ func connect_hex_neighbors(x: int, y: int, node_id: int):
 func hide_human_stats():
 	details_label.hide()
 
-#func delete_half_of_humans():
-	#if humans.size() <= 1:
-		#print("Not enough humans to delete.")
-		#return
-#
-	#var to_remove = humans.size() / 2
-	#print("Deleting ", to_remove, " humans...")
-#
-	#for i in range(to_remove):
-		#var human = humans.pop_back()
-		#if human:
-			#remove_human(human)
-			#queue_free()
-			
+func register_house(house_position: Vector2i, house_sprite: Sprite2D):
+	houses.append(house_position)
+	house_sprites.append(house_sprite)
+	house_count += 1
+	add_child(house_sprite)
+
+func reset_simulation():
+	print("Resetting simulation...")
+	
+	# Clear all humans
+	for human in humans:
+		if is_instance_valid(human):
+			human.queue_free()
+	humans.clear()
+	
+	flower_life_queue.clear()
+	print("Simulation reset complete")
+
+var popup_font = preload("res://assets/fonts/Tox Typewriter.ttf")	
+
+func show_info_popup():
+	var info_popup = AcceptDialog.new()
+	info_popup.title = "Game controls and shortcuts"
+	info_popup.size = Vector2(300, 200)
+	
+	var rich_text = RichTextLabel.new()
+	rich_text.bbcode_enabled = true
+	rich_text.fit_content = true
+	rich_text.scroll_active = false
+	rich_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rich_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rich_text.add_theme_font_override("normal_font", popup_font)
+	rich_text.add_theme_font_size_override("normal_font_size", 16)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	margin.add_child(rich_text)
+	info_popup.add_child(margin)
+	
+	rich_text.text = "	
+	[font_size=18][u]Keyboard Shortcuts:[/u][/font_size]
+	[table=2][cell]Space:[/cell][cell]Pause/Unpause[/cell]
+	[cell]~ (Tilde):[/cell][cell]Toggle terrain editor[/cell]
+	[cell]1-9:[/cell][cell]Select terrain type[/cell]
+	[cell]T key:[/cell][cell]Thanos snap. Half the current population of the people[/cell]
+	[cell]O key:[/cell][cell]Zoom in[/cell]
+	[cell]P key:[/cell][cell]Zoom out[/cell]
+	[cell]Arrow keys:[/cell][cell]Navigate on the map[/cell][/table]
+	
+	[font_size=18][u]Mouse Controls:[/u][/font_size]
+	[table=2][cell]Left-click:[/cell][cell]Spawn human/Paint terrain[/cell]
+	[cell]Right-click/Hover:[/cell][cell]Inspect human[/cell][/table]
+	
+	[font_size=18][u]Terrain Types:[/u][/font_size]
+	[table=2][cell]1. Water[/cell][cell]5. Flower[/cell]
+	[cell]2. Sand[/cell][cell]6. Snow[/cell]
+	[cell]3. Grass[/cell][cell]7. Forest[/cell]
+	[cell]4. Mountain[/cell][/table]
+	"
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_child(rich_text)
+	vbox.add_child(Control.new())  # Empty spacer
+	margin.add_child(vbox)
+	
+	add_child(info_popup)
+	info_popup.popup_centered()
+	

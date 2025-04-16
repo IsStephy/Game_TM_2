@@ -261,6 +261,8 @@ func gather_wood(profession):
 
 # Preload the house texture
 var house_texture = preload("res://assets/buildings/house.png")
+var houses = []
+var house_sprites = []
 # Function to build a house if the human has enough wood
 func build_house():
 	if house_count < 1:  # Ensure only one house is built
@@ -276,6 +278,9 @@ func build_house():
 		# Add the sprite to the scene (parent node)
 		get_parent().add_child(house_sprite)
 		print("House built! Total houses constructed: ", house_count)
+		
+		houses.append(random_pos)
+		house_sprites.append(house_sprite)
 # Get a random position within the map for constructing a house
 # Get a random position within a 10-tile radius where the weight is 1 (e.g., grass area)
 func get_random_position_for_house() -> Vector2i:

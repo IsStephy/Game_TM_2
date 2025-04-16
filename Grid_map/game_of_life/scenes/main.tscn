@@ -1,9 +1,10 @@
-[gd_scene load_steps=14 format=3 uid="uid://4upwiylptlrp"]
+[gd_scene load_steps=15 format=3 uid="uid://4upwiylptlrp"]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_sg7kk"]
 [ext_resource type="PackedScene" uid="uid://cue0st352a3a7" path="res://scenes/tile_map_layer.tscn" id="1_xq4sr"]
 [ext_resource type="Texture2D" uid="uid://dpghs5xi1nbib" path="res://assets/tile_map/merged_output.png" id="3_wfchj"]
 [ext_resource type="Script" path="res://scenes/character_body_2d.gd" id="4_jd7uj"]
+[ext_resource type="FontFile" uid="uid://dcv0uni5ios3o" path="res://assets/fonts/Tox Typewriter.ttf" id="5_its4j"]
 
 [sub_resource type="Gradient" id="Gradient_d8dha"]
 interpolation_mode = 1
@@ -1740,3 +1741,23 @@ position = Vector2(592, 328)
 zoom = Vector2(0.5, 0.5)
 
 [node name="Timer" type="Timer" parent="."]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="ResetBtn" type="Button" parent="CanvasLayer"]
+offset_left = 15.0
+offset_top = 15.0
+offset_right = 87.0
+offset_bottom = 59.0
+theme_override_fonts/font = ExtResource("5_its4j")
+theme_override_font_sizes/font_size = 23
+text = "Reset"
+
+[node name="InfoBtn" type="Button" parent="CanvasLayer"]
+offset_left = 15.0
+offset_top = 74.0
+offset_right = 87.0
+offset_bottom = 118.0
+theme_override_fonts/font = ExtResource("5_its4j")
+theme_override_font_sizes/font_size = 23
+text = "Info"
